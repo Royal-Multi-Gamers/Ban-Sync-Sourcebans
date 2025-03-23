@@ -1,8 +1,8 @@
-# Application de Synchronisation de Base de Données Steam
+# Application de Synchronisation de Bans depuis un fichier TXT vers Sourcebans et synchronise le Sourcebans vers un fichier TXT
 
 ## Description
 
-Cette application synchronise les identifiants Steam (SteamID) d'une base de données MySQL vers un fichier de sortie. Elle surveille également les modifications du fichier de sortie et met à jour la base de données en conséquence. L'application utilise l'API Steam pour convertir les SteamID64 en SteamID2 et récupérer les noms des joueurs.
+Cette application synchronise les identifiants Steam (SteamID) d'une base de données MySQL (Sourcebans++) vers un fichier de sortie txt. Elle surveille également les modifications du fichier de sortie et met à jour la base de données en conséquence. L'application utilise l'API Steam pour convertir les SteamID64 en SteamID2 et récupérer les noms des joueurs.
 
 ## Fonctionnalités
 
