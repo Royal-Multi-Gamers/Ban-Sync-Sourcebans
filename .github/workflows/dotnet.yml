@@ -42,4 +42,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: BBR-Ban-Sync
-          path: ./publish
+          path: ./publish/**/*
