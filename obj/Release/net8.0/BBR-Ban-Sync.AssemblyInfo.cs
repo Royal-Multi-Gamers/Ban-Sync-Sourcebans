@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BBR-Ban-Sync")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6a8e4bf96e7cc3956d9b11b47b8aa85e95cc2402")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+803349805695c8590ec2ddcfc0a767b9b8678cf2")]
 [assembly: System.Reflection.AssemblyProductAttribute("BBR-Ban-Sync")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BBR-Ban-Sync")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

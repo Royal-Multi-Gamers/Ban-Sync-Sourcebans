@@ -67,3 +67,12 @@ jobs:
         asset_name: application.zip
         asset_content_type: application/zip
 
+  download_artifacts:
+    needs: create_release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: application
+        path: ./download
