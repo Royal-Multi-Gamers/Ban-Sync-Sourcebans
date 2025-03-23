@@ -26,7 +26,7 @@ jobs:
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
 
     - name: Run tests
       run: dotnet test --no-build --verbosity normal
@@ -37,5 +37,4 @@ jobs:
       with:
         name: build-artifacts
         path: |
-          **/bin/**
-          **/obj/**
+          **/bin/Release/**
