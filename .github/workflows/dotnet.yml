@@ -38,8 +38,13 @@ jobs:
       - name: 📦 Publish EXE (self-contained)
         run: dotnet publish -c Release -r win-x64 --self-contained true -o ./publish
 
-      - name: 📤 Upload EXE + tout le dossier publish
+      - name: 📤 Upload de tout le contenu publish (runtimes inclus)
         uses: actions/upload-artifact@v4
         with:
-          name: BBR-Ban-Sync
+          name: mon-application-windows
           path: ./publish/**/*
+    
+      - name: 🔍 Voir les fichiers générés
+      run: |
+        echo "Contenu de ./publish :"
+        ls -R ./publish
