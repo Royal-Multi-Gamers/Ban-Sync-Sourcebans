@@ -1,40 +1,39 @@
-name: .NET
+# .github/workflows/build-dotnet.yml
+name: Build .NET project
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest]
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: 🔽 Checkout du code
+        uses: actions/checkout@v3
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: '8.0.x'
+      - name: 🧰 Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x' # adapte selon ta version
 
-    - name: Restore dependencies
-      run: dotnet restore
+      - name: 📦 Restore les dépendances
+        run: dotnet restore
 
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
+      - name: 🏗 Build le projet
+        run: dotnet build --no-restore --configuration Release
 
-    - name: Run tests
-      run: dotnet test --no-build --verbosity normal
+      - name: 🧪 Run les tests
+        run: dotnet test --no-build --verbosity normal
 
-    - name: Publish build artifacts
-      if: success()
-      uses: actions/upload-artifact@v2
-      with:
-        name: build-artifacts
-        path: |
-          **/bin/Release/**
+      - name: 📦 Publish l'application
+        run: dotnet publish -c Release -o ./publish
+
+      - name: 📤 Upload des artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-artifacts
+          path: ./publish
