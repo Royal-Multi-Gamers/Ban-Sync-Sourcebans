@@ -1,5 +1,5 @@
 # .github/workflows/build-dotnet.yml
-name: Build .NET project
+name: Build .NET EXE
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
       - name: 🧰 Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x' # adapte selon ta version
+          dotnet-version: '8.0.x' # ou ta version
 
       - name: 📦 Restore les dépendances
         run: dotnet restore
@@ -29,11 +29,11 @@ jobs:
       - name: 🧪 Run les tests
         run: dotnet test --no-build --verbosity normal
 
-      - name: 📦 Publish l'application
-        run: dotnet publish -c Release -o ./publish
+      - name: 📦 Publish EXE (self-contained)
+        run: dotnet publish -c Release -r win-x64 --self-contained true -o ./publish
 
-      - name: 📤 Upload des artefacts
+      - name: 📤 Upload EXE comme artefact
         uses: actions/upload-artifact@v4
         with:
-          name: dotnet-artifacts
-          path: ./publish
+          name: mon-application-windows
+          path: ./publish/*.exe
