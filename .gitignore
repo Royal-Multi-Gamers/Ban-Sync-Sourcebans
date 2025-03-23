@@ -1,0 +1,11 @@
+﻿/.vs
+/bin
+/bin/
+#.github
+.vscode
+**/.vscode/
+#**/.github/
+**/.vs/
+**/logs/
+**/config.json
+config.json
