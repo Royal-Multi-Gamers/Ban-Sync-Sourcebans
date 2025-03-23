@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, debian-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
     - name: Checkout repository
@@ -26,7 +26,41 @@ jobs:
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
 
     - name: Run tests
       run: dotnet test --no-build --verbosity normal
+
+    - name: Publish
+      run: dotnet publish --no-build --configuration Release --output ./publish
+
+    - name: Archive production artifacts
+      if: success()
+      uses: actions/upload-artifact@v2
+      with:
+        name: application-${{ matrix.os }}
+        path: ./publish
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: application-${{ matrix.os }}
+        path: ./artifacts
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        files: ./artifacts/**/*
