@@ -37,8 +37,11 @@ jobs:
 
       - name: 📦 Publish EXE (self-contained)
         run: dotnet publish -c Release -r win-x64 --self-contained true -o ./publish
-
-      - name: 📤 Upload de tout le contenu publish (runtimes inclus)
+      
+      - name: 🔍 Liste des fichiers pour debug
+        run: find ./publish
+      
+      - name: 📤 Upload de tout le contenu publish
         uses: actions/upload-artifact@v4
         with:
           name: BBR-Ban-Sync
