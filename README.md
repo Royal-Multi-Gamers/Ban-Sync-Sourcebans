@@ -1,22 +1,23 @@
+[![Build .NET EXE](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml)
 # Application de Synchronisation de Bans depuis un fichier TXT vers Sourcebans et synchronise le Sourcebans vers un fichier TXT
 
 ## Description
 
-Cette application synchronise les identifiants Steam (SteamID) d'une base de données MySQL (Sourcebans++) vers un fichier de sortie txt. Elle surveille également les modifications du fichier de sortie et met à jour la base de données en conséquence. L'application utilise l'API Steam pour convertir les SteamID64 en SteamID2 et récupérer les noms des joueurs.
+Cette application synchronise les identifiants Steam (SteamID) d'une base de donnÃ©es MySQL (Sourcebans++) vers un fichier de sortie txt. Elle surveille Ã©galement les modifications du fichier de sortie et met Ã  jour la base de donnÃ©es en consÃ©quence. L'application utilise l'API Steam pour convertir les SteamID64 en SteamID2 et rÃ©cupÃ©rer les noms des joueurs.
 
-## Fonctionnalités
+## FonctionnalitÃ©s
 
-- Synchronisation initiale de la base de données vers le fichier de sortie.
-- Surveillance des modifications du fichier de sortie et mise à jour de la base de données.
+- Synchronisation initiale de la base de donnÃ©es vers le fichier de sortie.
+- Surveillance des modifications du fichier de sortie et mise Ã  jour de la base de donnÃ©es.
 - Conversion des SteamID64 en SteamID2.
-- Récupération des noms des joueurs via l'API Steam.
-- Journalisation des événements et des erreurs avec NLog.
+- RÃ©cupÃ©ration des noms des joueurs via l'API Steam.
+- Journalisation des Ã©vÃ©nements et des erreurs avec NLog.
 
 ## Configuration
 
 ### Fichier de Configuration
 
-L'application utilise un fichier `config.json` pour la configuration. Si ce fichier n'existe pas, un fichier de configuration par défaut sera créé. Voici un exemple de `config.json` :
+L'application utilise un fichier `config.json` pour la configuration. Si ce fichier n'existe pas, un fichier de configuration par dÃ©faut sera crÃ©Ã©. Voici un exemple de `config.json` :
 ```
 {
   "ConnectionString": {
@@ -35,47 +36,47 @@ L'application utilise un fichier `config.json` pour la configuration. Si ce fich
 
 ### Variables de Configuration
 
-- `ConnectionString`: Informations de connexion à la base de données MySQL.
+- `ConnectionString`: Informations de connexion Ã  la base de donnÃ©es MySQL.
   - `Server`: Adresse du serveur MySQL.
-  - `Uid`: Nom d'utilisateur de la base de données.
-  - `Pwd`: Mot de passe de l'utilisateur de la base de données.
-  - `Database`: Nom de la base de données.
-- `OutputFile`: Chemin du fichier de sortie à surveiller.
-- `SteamAPIKey`: Clé API Steam pour accéder aux informations des joueurs.
+  - `Uid`: Nom d'utilisateur de la base de donnÃ©es.
+  - `Pwd`: Mot de passe de l'utilisateur de la base de donnÃ©es.
+  - `Database`: Nom de la base de donnÃ©es.
+- `OutputFile`: Chemin du fichier de sortie Ã  surveiller.
+- `SteamAPIKey`: ClÃ© API Steam pour accÃ©der aux informations des joueurs.
 - `ServerID`: Identifiant du serveur.
-- `DebugMode`: Mode de débogage (true/false).
+- `DebugMode`: Mode de dÃ©bogage (true/false).
 
-## Déploiement
+## DÃ©ploiement
 
-L'application utilise GitHub Actions pour le déploiement. Le workflow de déploiement se trouve dans `.github/workflows/release.yml`. Voici les étapes principales :
+L'application utilise GitHub Actions pour le dÃ©ploiement. Le workflow de dÃ©ploiement se trouve dans `.github/workflows/release.yml`. Voici les Ã©tapes principales :
 
-1. Récupération du dépôt.
+1. RÃ©cupÃ©ration du dÃ©pÃ´t.
 2. Configuration de .NET.
-3. Restauration des dépendances.
+3. Restauration des dÃ©pendances.
 4. Compilation de l'application.
-5. Exécution des tests.
+5. ExÃ©cution des tests.
 6. Publication de l'application.
 7. Archivage des artefacts.
-8. Création d'une release GitHub.
-9. Téléchargement des artefacts de la release.
+8. CrÃ©ation d'une release GitHub.
+9. TÃ©lÃ©chargement des artefacts de la release.
 
-## Exécution
+## ExÃ©cution
 
-Pour exécuter l'application, utilisez la commande suivante :
+Pour exÃ©cuter l'application, utilisez la commande suivante :
 
 ```
 dotnet run
 ```
 
-Assurez-vous que le fichier `config.json` est correctement configuré avant de lancer l'application.
+Assurez-vous que le fichier `config.json` est correctement configurÃ© avant de lancer l'application.
 
 ## Journalisation
 
-L'application utilise NLog pour la journalisation. Le fichier de configuration NLog (`NLog.config`) doit être présent dans le répertoire de l'application. Les journaux sont enregistrés dans le répertoire `logs`.
+L'application utilise NLog pour la journalisation. Le fichier de configuration NLog (`NLog.config`) doit Ãªtre prÃ©sent dans le rÃ©pertoire de l'application. Les journaux sont enregistrÃ©s dans le rÃ©pertoire `logs`.
 
 ## Contribuer
 
-Les contributions sont les bienvenues ! Veuillez soumettre des pull requests et signaler les problèmes via GitHub.
+Les contributions sont les bienvenues ! Veuillez soumettre des pull requests et signaler les problÃ¨mes via GitHub.
 
 ## Licence
 
