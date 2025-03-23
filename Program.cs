@@ -354,7 +354,7 @@ class Program
         {
             var response = await client.GetStringAsync($"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steamAPIKey}&steamids={steamID64}");
             var jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(response);
-            var players = jsonResponse?.response?.players;
+            var players = jsonResponse?.response?.players as JArray;
 
             if (players == null || players.Count == 0)
             {
@@ -384,7 +384,7 @@ class Program
         {
             var response = await client.GetStringAsync($"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steamAPIKey}&steamids={steamID64}");
             var jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(response);
-            var players = jsonResponse?.response?.players;
+            var players = jsonResponse?.response?.players as JArray;
 
             if (players == null || players.Count == 0)
             {
@@ -394,7 +394,7 @@ class Program
             }
 
             var player = players[0];
-            string? playerName = player?.personaname;
+            string? playerName = player?["personaname"]?.ToString();
 
             if (string.IsNullOrEmpty(playerName))
             {
@@ -482,11 +482,15 @@ class Program
     private static void ConfigureNLog()
     {
         LogManager.Configuration = new NLog.Config.XmlLoggingConfiguration("NLog.config");
-        LogManager.ConfigurationReloaded += (sender, e) =>
+        LogManager.ConfigurationChanged += (sender, e) =>
         {
-            if (e.Exception != null)
+            if (e.ActivatedConfiguration != null)
             {
-                Console.WriteLine($"NLog configuration reload failed: {e.Exception}");
+                Console.WriteLine("NLog configuration reloaded successfully.");
+            }
+            else
+            {
+                Console.WriteLine("NLog configuration reload failed.");
             }
         };
         LogManager.ThrowConfigExceptions = true;

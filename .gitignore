@@ -1,6 +1,6 @@
 ﻿/.vs
-#/bin
-#/bin/
+/bin
+/bin/
 #.github
 .vscode
 **/.vscode/

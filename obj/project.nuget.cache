@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "xriGyrikfo8=",
+  "dgSpecHash": "eRxpua4D9qU=",
   "success": true,
-  "projectFilePath": "D:\\Github\\Royal-Multi-Gamers\\BBR-Ban-Sync\\BBR-Ban-Sync.csproj",
+  "projectFilePath": "D:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\thiba\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\google.protobuf\\3.26.1\\google.protobuf.3.26.1.nupkg.sha512",

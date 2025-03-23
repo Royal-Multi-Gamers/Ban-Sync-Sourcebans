@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Github\\Royal-Multi-Gamers\\BBR-Ban-Sync\\BBR-Ban-Sync.csproj": {}
+    "D:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj": {}
   },
   "projects": {
-    "D:\\Github\\Royal-Multi-Gamers\\BBR-Ban-Sync\\BBR-Ban-Sync.csproj": {
+    "D:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Github\\Royal-Multi-Gamers\\BBR-Ban-Sync\\BBR-Ban-Sync.csproj",
+        "projectUniqueName": "D:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
         "projectName": "BBR-Ban-Sync",
-        "projectPath": "D:\\Github\\Royal-Multi-Gamers\\BBR-Ban-Sync\\BBR-Ban-Sync.csproj",
+        "projectPath": "D:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
         "packagesPath": "C:\\Users\\thiba\\.nuget\\packages\\",
-        "outputPath": "D:\\Github\\Royal-Multi-Gamers\\BBR-Ban-Sync\\obj\\",
+        "outputPath": "D:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
