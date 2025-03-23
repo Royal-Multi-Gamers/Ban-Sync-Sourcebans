@@ -43,8 +43,3 @@ jobs:
         with:
           name: mon-application-windows
           path: ./publish/**/*
-    
-      - name: 🔍 Voir les fichiers générés
-      run: |
-        echo "Contenu de ./publish :"
-        ls -R ./publish
