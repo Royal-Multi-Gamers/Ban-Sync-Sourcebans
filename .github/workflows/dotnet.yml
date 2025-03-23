@@ -4,8 +4,14 @@ name: Build .NET EXE
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
 
 jobs:
   build:
