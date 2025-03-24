@@ -1,5 +1,5 @@
 # .github/workflows/build-dotnet.yml
-name: Build .NET EXE
+name: Commit Update & Pull Requests
 
 on:
   push:

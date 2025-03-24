@@ -48,7 +48,7 @@ L'application utilise un fichier `config.json` pour la configuration. Si ce fich
 
 ## Déploiement
 
-L'application utilise GitHub Actions pour le déploiement. Le workflow de déploiement se trouve dans `.github/workflows/release.yml`. Voici les étapes principales :
+L'application utilise GitHub Actions pour le déploiement. Le workflow de déploiement se trouve dans `.github/workflows/dotnet.yml`. Voici les étapes principales :
 
 1. Récupération du dépôt.
 2. Configuration de .NET.
@@ -56,9 +56,7 @@ L'application utilise GitHub Actions pour le déploiement. Le workflow de déplo
 4. Compilation de l'application.
 5. Exécution des tests.
 6. Publication de l'application.
-7. Archivage des artefacts.
-8. Création d'une release GitHub.
-9. Téléchargement des artefacts de la release.
+7. Création des artefacts.
 
 ## Exécution
 
