@@ -7,7 +7,7 @@ on:
     paths-ignore:
       - '.gitignore'
       - 'README.md'
-      - '.github'
+      - '.github/**'
   workflow_dispatch:
 
 jobs:
@@ -16,84 +16,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 🔽 Checkout du code
-      uses: actions/checkout@v3
+      - name: 🔽 Checkout du code
+        uses: actions/checkout@v3
 
-    - name: 🧰 Set up .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
+      - name: 🧰 Set up .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: 📦 Restore les dépendances
-      run: dotnet restore
+      - name: 📦 Restore les dépendances
+        run: dotnet restore
 
-    - name: 🏗 Build le projet
-      run: dotnet build --no-restore --configuration Release
+      - name: 🏗 Build le projet
+        run: dotnet build --no-restore --configuration Release
 
-    - name: 📦 Publish EXE (self-contained)
-      run: dotnet publish ./BBR-Ban-Sync.csproj -c Release -r win-x64 --self-contained true -o ./publish
+      - name: 🚀 Publish EXE (self-contained)
+        run: dotnet publish ./BBR-Ban-Sync.csproj -c Release -r win-x64 --self-contained true -o ./publish
 
-    - name: 📤 Upload Archive
-      uses: actions/upload-artifact@v4
-      with:
-        name: BBR-Ban-Sync
-        path: ./publish/**/*
+      - name: 📦 Créer l'archive ZIP
+        run: |
+          cd publish
+          zip -r ../BBR-Ban-Sync.zip ./*
+
+      - name: 📤 Upload de l'archive en tant qu'artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BBR-Ban-Sync-zip
+          path: ./BBR-Ban-Sync.zip
 
   release:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: ⬇️ Télécharger l'archive ZIP depuis les artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: BBR-Ban-Sync-zip
+          path: ./
 
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: BBR-Ban-Sync
-        path: ./output
-
-    - name: Update GitHub Release
-      id: update_release
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const { data: releases } = await github.repos.listReleases({
-            owner: context.repo.owner,
-            repo: context.repo.repo
-          });
-
-          const release = releases.find(r => r.tag_name === process.env.GITHUB_REF.replace('refs/tags/', ''));
-
-          if (release) {
-            await github.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.id,
-              tag_name: process.env.GITHUB_REF.replace('refs/tags/', ''),
-              name: `Release ${process.env.GITHUB_REF.replace('refs/tags/', '')}`,
-              draft: false,
-              prerelease: false
-            });
-          } else {
-            await github.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: process.env.GITHUB_REF.replace('refs/tags/', ''),
-              name: `Release ${process.env.GITHUB_REF.replace('refs/tags/', '')}`,
-              draft: false,
-              prerelease: false
-            });
-          }
-      env:
-        GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-      with:
-        upload_url: ${{ steps.update_release.outputs.upload_url }}
-        asset_path: ./publish/**/*
-        asset_name: BBR-Ban-Sync.zip
-        asset_content_type: application/zip
+      - name: 📤 Créer la release GitHub avec l’archive
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: BBR-Ban-Sync.zip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
