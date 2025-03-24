@@ -27,18 +27,15 @@ class Program
         LoadConfiguration();
 
         logger.Info("Application started.");
-        Console.WriteLine("Application started.");
 
         if (debugMode)
         {
             logger.Info("Debug mode is enabled.");
-            Console.WriteLine("Debug mode is enabled.");
         }
 
         if (!File.Exists(outputFile))
         {
             logger.Error($"File not found: {outputFile}");
-            Console.WriteLine($"File not found: {outputFile}");
             return;
         }
 
@@ -59,7 +56,6 @@ class Program
         if (debugMode)
         {
             logger.Info("Timer started.");
-            Console.WriteLine("Timer started.");
         }
 
         SetupFileWatcher();
@@ -137,7 +133,6 @@ class Program
         if (debugMode)
         {
             logger.Info("File watcher started.");
-            Console.WriteLine("File watcher started.");
         }
     }
 
@@ -150,7 +145,6 @@ class Program
             if (debugMode)
             {
                 logger.Info("Ignoring duplicate event.");
-                Console.WriteLine("Ignoring duplicate event.");
             }
             return;
         }
@@ -160,7 +154,6 @@ class Program
         if (debugMode)
         {
             logger.Info($"File changed: {e.FullPath}");
-            Console.WriteLine($"File changed: {e.FullPath}");
         }
 
         List<string> currentLines = new List<string>();
@@ -182,7 +175,6 @@ class Program
                 if (debugMode)
                 {
                     logger.Error($"IOException encountered: {ex.Message}");
-                    Console.WriteLine($"IOException encountered: {ex.Message}");
                 }
                 await Task.Delay(100); // Wait 100ms before retrying
             }
@@ -191,7 +183,6 @@ class Program
         if (currentLines.Count == 0)
         {
             logger.Error("Failed to read the file after multiple attempts.");
-            Console.WriteLine("Failed to read the file after multiple attempts.");
             isProcessing = false;
             return;
         }
@@ -199,21 +190,17 @@ class Program
         if (debugMode)
         {
             logger.Info("Comparing lines...");
-            Console.WriteLine("Comparing lines...");
             logger.Info($"Last lines count: {lastLines.Count}");
-            Console.WriteLine($"Last lines count: {lastLines.Count}");
             logger.Info($"Current lines count: {currentLines.Count}");
-            Console.WriteLine($"Current lines count: {currentLines.Count}");
         }
 
         foreach (var line in currentLines)
         {
             if (!string.IsNullOrWhiteSpace(line) && !lastLines.Contains(line))
             {
-                if (debugMode)
+                if (!debugMode)
                 {
                     logger.Info($"New line detected: {line}");
-                    Console.WriteLine($"New line detected: {line}");
                 }
                 await AddSteamIDToDatabase(line);
             }
@@ -225,7 +212,6 @@ class Program
         if (debugMode)
         {
             logger.Info("Finished processing file changes.");
-            Console.WriteLine("Finished processing file changes.");
         }
 
         isProcessing = false;
@@ -236,7 +222,6 @@ class Program
         if (debugMode)
         {
             logger.Info($"Adding SteamID {steamID64} to database...");
-            Console.WriteLine($"Adding SteamID {steamID64} to database...");
         }
 
         var steamID2 = await ConvertSteamID64ToSteamID2(steamID64);
@@ -244,7 +229,6 @@ class Program
         if (debugMode)
         {
             logger.Info($"Converted SteamID64 {steamID64} to SteamID2 {steamID2}");
-            Console.WriteLine($"Converted SteamID64 {steamID64} to SteamID2 {steamID2}");
         }
 
         if (steamID2 == null)
@@ -252,7 +236,6 @@ class Program
             if (debugMode)
             {
                 logger.Info($"SteamID2 is null for SteamID64 {steamID64}");
-                Console.WriteLine($"SteamID2 is null for SteamID64 {steamID64}");
             }
             return;
         }
@@ -262,7 +245,6 @@ class Program
             if (debugMode)
             {
                 logger.Info($"SteamID {steamID64} already exists in the database with RemoveType NULL.");
-                Console.WriteLine($"SteamID {steamID64} already exists in the database with RemoveType NULL.");
             }
             return;
         }
@@ -273,7 +255,6 @@ class Program
             if (debugMode)
             {
                 logger.Info($"Player name is null for SteamID64 {steamID64}");
-                Console.WriteLine($"Player name is null for SteamID64 {steamID64}");
             }
             return;
         }
@@ -297,7 +278,6 @@ class Program
                 if (debugMode)
                 {
                     logger.Info($"Executing query: {query}");
-                    Console.WriteLine($"Executing query: {query}");
                 }
 
                 await command.ExecuteNonQueryAsync();
@@ -305,15 +285,13 @@ class Program
                 if (debugMode)
                 {
                     logger.Info($"Query executed successfully: {query}");
-                    Console.WriteLine($"Query executed successfully: {query}");
                 }
             }
         }
 
-        if (debugMode)
+        if (!debugMode)
         {
             logger.Info($"Added SteamID {steamID64} as {steamID2} to database.");
-            Console.WriteLine($"Added SteamID {steamID64} as {steamID2} to database.");
         }
     }
 
@@ -330,7 +308,6 @@ class Program
                 if (debugMode)
                 {
                     logger.Info($"Executing query: {query}");
-                    Console.WriteLine($"Executing query: {query}");
                 }
 
                 var count = (long)(await command.ExecuteScalarAsync() ?? 0L);
@@ -338,9 +315,7 @@ class Program
                 if (debugMode)
                 {
                     logger.Info($"Query executed successfully: {query}");
-                    Console.WriteLine($"Query executed successfully: {query}");
                     logger.Info($"Count of SteamID2 {steamID2} in database: {count}");
-                    Console.WriteLine($"Count of SteamID2 {steamID2} in database: {count}");
                 }
 
                 return count > 0;
@@ -359,7 +334,6 @@ class Program
             if (players == null || players.Count == 0)
             {
                 logger.Error($"No player found for SteamID64: {steamID64}");
-                Console.WriteLine($"No player found for SteamID64: {steamID64}");
                 return null; // Or handle it as per your application's requirement
             }
 
@@ -389,7 +363,6 @@ class Program
             if (players == null || players.Count == 0)
             {
                 logger.Error($"No player found for SteamID64: {steamID64}");
-                Console.WriteLine($"No player found for SteamID64: {steamID64}");
                 return null; // Or handle it as per your application's requirement
             }
 
@@ -399,7 +372,6 @@ class Program
             if (string.IsNullOrEmpty(playerName))
             {
                 logger.Error($"Player name not found for SteamID64: {steamID64}");
-                Console.WriteLine($"Player name not found for SteamID64: {steamID64}");
                 return null; // Or handle it as per your application's requirement
             }
 
@@ -412,7 +384,6 @@ class Program
         if (debugMode)
         {
             logger.Info("Synchronizing database to file...");
-            Console.WriteLine("Synchronizing database to file...");
         }
 
         using (var connection = new MySqlConnection(connectionString))
@@ -426,7 +397,6 @@ class Program
                 if (debugMode)
                 {
                     logger.Info($"Executing query: {query}");
-                    Console.WriteLine($"Executing query: {query}");
                 }
 
                 using (var reader = await command.ExecuteReaderAsync())
@@ -442,7 +412,6 @@ class Program
                     if (debugMode)
                     {
                         logger.Info($"Writing {lines.Count} unique SteamIDs to file.");
-                        Console.WriteLine($"Writing {lines.Count} unique SteamIDs to file.");
                     }
 
                     await File.WriteAllLinesAsync(outputFile, lines);
@@ -451,7 +420,6 @@ class Program
                 if (debugMode)
                 {
                     logger.Info($"Query executed successfully: {query}");
-                    Console.WriteLine($"Query executed successfully: {query}");
                 }
             }
         }
@@ -459,7 +427,6 @@ class Program
         if (debugMode)
         {
             logger.Info("Synchronized database to file.");
-            Console.WriteLine("Synchronized database to file.");
         }
     }
 
@@ -486,11 +453,11 @@ class Program
         {
             if (e.ActivatedConfiguration != null)
             {
-                Console.WriteLine("NLog configuration reloaded successfully.");
+                logger.Info("NLog configuration reloaded successfully.");
             }
             else
             {
-                Console.WriteLine("NLog configuration reload failed.");
+                logger.Error("NLog configuration reload failed.");
             }
         };
         LogManager.ThrowConfigExceptions = true;
