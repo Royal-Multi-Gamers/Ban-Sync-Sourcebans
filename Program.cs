@@ -72,6 +72,9 @@ class Program
         }
     }
 
+    private static bool discordWebhookEnabled;
+    private static List<string> discordWebhookUrls = new List<string>();
+
     private static void LoadConfiguration()
     {
         const string configFilePath = "config.json";
@@ -94,6 +97,13 @@ class Program
         steamAPIKey = config["SteamAPIKey"]?.ToString() ?? string.Empty;
         serverID = (int)(config["ServerID"] ?? 0);
         debugMode = (bool)(config["DebugMode"] ?? false);
+
+        var discordWebhookConfig = config["DiscordWebhook"];
+        if (discordWebhookConfig != null)
+        {
+            discordWebhookEnabled = (bool)(discordWebhookConfig["Enabled"] ?? false);
+            discordWebhookUrls = discordWebhookConfig["Urls"]?.ToObject<List<string>>() ?? new List<string>();
+        }
     }
 
     private static void CreateDefaultConfigFile(string configFilePath)
@@ -110,7 +120,15 @@ class Program
             ["OutputFile"] = @"C:\testps\Blacklist.txt",
             ["SteamAPIKey"] = "steamapikey",
             ["ServerID"] = 5,
-            ["DebugMode"] = true
+            ["DebugMode"] = true,
+            ["DiscordWebhook"] = new JObject
+            {
+                ["Enabled"] = true,
+                ["Urls"] = new JArray
+                {
+                    "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
+                }
+            }
         };
 
         File.WriteAllText(configFilePath, defaultConfig.ToString());
@@ -216,6 +234,36 @@ class Program
 
         isProcessing = false;
     }
+    private static async Task SendDiscordWebhook(string steamID64, string playerName)
+    {
+        if (!discordWebhookEnabled || discordWebhookUrls.Count == 0)
+        {
+            return;
+        }
+
+        using (var client = new HttpClient())
+        {
+            var embed = new
+            {
+                title = "Ban Notification",
+                description = $"Le joueur **{playerName}** avec le SteamID64 : **{steamID64}** est banni du serveur BattleBit Remastered.\nPour toutes réclamations, aller sur : https://www.clan-rmg.com/playerpanel/",
+                color = 16711680 // Rouge
+            };
+
+            var payload = new
+            {
+                embeds = new[] { embed }
+            };
+
+            var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(payload), System.Text.Encoding.UTF8, "application/json");
+
+            foreach (var url in discordWebhookUrls)
+            {
+                await client.PostAsync(url, content);
+            }
+        }
+    }
+
 
     private static async Task AddSteamIDToDatabase(string steamID64)
     {
@@ -293,6 +341,9 @@ class Program
         {
             logger.Info($"Added SteamID {steamID64} as {steamID2} to database.");
         }
+
+        // Send Discord webhook notification
+        await SendDiscordWebhook(steamID64, name);
     }
 
     private static async Task<bool> IsSteamIDInDatabase(string steamID2)
@@ -386,6 +437,13 @@ class Program
             logger.Info("Synchronizing database to file...");
         }
 
+        // Lire les SteamID64 actuels du fichier
+        var currentSteamIDs = new HashSet<string>();
+        if (File.Exists(outputFile))
+        {
+            currentSteamIDs = new HashSet<string>(await File.ReadAllLinesAsync(outputFile));
+        }
+
         using (var connection = new MySqlConnection(connectionString))
         {
             await connection.OpenAsync();
@@ -401,20 +459,33 @@ class Program
 
                 using (var reader = await command.ExecuteReaderAsync())
                 {
-                    var lines = new HashSet<string>();
+                    var newSteamIDs = new HashSet<string>();
                     while (await reader.ReadAsync())
                     {
                         var steamID2 = reader.GetString("authid");
                         var steamID64 = await ConvertSteamID2ToSteamID64(steamID2);
-                        lines.Add(steamID64);
+                        newSteamIDs.Add(steamID64);
                     }
+
+                    // Comparer les SteamID64 actuels avec ceux de la base de données
+                    var addedSteamIDs = newSteamIDs.Except(currentSteamIDs).ToList();
 
                     if (debugMode)
                     {
-                        logger.Info($"Writing {lines.Count} unique SteamIDs to file.");
+                        logger.Info($"Writing {newSteamIDs.Count} unique SteamIDs to file.");
                     }
 
-                    await File.WriteAllLinesAsync(outputFile, lines);
+                    await File.WriteAllLinesAsync(outputFile, newSteamIDs);
+
+                    // Envoyer des notifications pour les nouveaux SteamID64
+                    foreach (var steamID64 in addedSteamIDs)
+                    {
+                        var playerName = await GetSteamName(steamID64);
+                        if (playerName != null)
+                        {
+                            await SendDiscordWebhook(steamID64, playerName);
+                        }
+                    }
                 }
 
                 if (debugMode)
