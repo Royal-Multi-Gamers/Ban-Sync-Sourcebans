@@ -1,4 +1,4 @@
-[![Build .NET EXE](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml)
+[![Create Release](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/release.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/release.yml)[![Build .NET EXE](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml)
 # Application de Synchronisation de Bans depuis un fichier TXT vers Sourcebans et synchronise le Sourcebans vers un fichier TXT
 
 ## Description
