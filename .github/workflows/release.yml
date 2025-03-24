@@ -52,23 +52,47 @@ jobs:
         name: BBR-Ban-Sync
         path: ./output
 
-    - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
+    - name: Update GitHub Release
+      id: update_release
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: releases } = await github.repos.listReleases({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+
+          const release = releases.find(r => r.tag_name === process.env.GITHUB_REF.replace('refs/tags/', ''));
+
+          if (release) {
+            await github.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              tag_name: process.env.GITHUB_REF.replace('refs/tags/', ''),
+              name: `Release ${process.env.GITHUB_REF.replace('refs/tags/', '')}`,
+              draft: false,
+              prerelease: false
+            });
+          } else {
+            await github.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: process.env.GITHUB_REF.replace('refs/tags/', ''),
+              name: `Release ${process.env.GITHUB_REF.replace('refs/tags/', '')}`,
+              draft: false,
+              prerelease: false
+            });
+          }
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.update_release.outputs.upload_url }}
         asset_path: ./publish/**/*
         asset_name: BBR-Ban-Sync.zip
         asset_content_type: application/zip
