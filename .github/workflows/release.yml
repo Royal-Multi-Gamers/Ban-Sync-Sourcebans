@@ -2,12 +2,8 @@ name: Create Release
 
 on:
   push:
-    branches: [ main ]
-    paths-ignore:
-      - '.gitignore'
-      - 'README.md'
-  pull_request:
-    branches: [ main ]
+    tags:
+      - 'v*.*.*'
     paths-ignore:
       - '.gitignore'
       - 'README.md'
@@ -15,6 +11,7 @@ on:
 
 jobs:
   build:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
     steps:
@@ -43,6 +40,7 @@ jobs:
 
   release:
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -60,8 +58,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.sha }}
-        release_name: Release ${{ github.sha }}
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
 
