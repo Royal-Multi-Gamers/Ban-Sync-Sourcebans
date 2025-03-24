@@ -29,7 +29,14 @@ L'application utilise un fichier `config.json` pour la configuration. Si ce fich
   "OutputFile": "C:\\testps\\Blacklist.txt",
   "SteamAPIKey": "steamapikey",
   "ServerID": 5,
-  "DebugMode": true
+  "DebugMode": true,
+  "DiscordWebhook": {
+    "Enabled": true,
+    "Urls": [
+      "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token",
+      "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
+    ]
+  }
 }
 ```
 
