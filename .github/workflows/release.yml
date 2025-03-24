@@ -1,0 +1,76 @@
+name: Create Release
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 🔽 Checkout du code
+      uses: actions/checkout@v3
+
+    - name: 🧰 Set up .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: 📦 Restore les dépendances
+      run: dotnet restore
+
+    - name: 🏗 Build le projet
+      run: dotnet build --no-restore --configuration Release
+
+    - name: 📦 Publish EXE (self-contained)
+      run: dotnet publish ./BBR-Ban-Sync.csproj -c Release -r win-x64 --self-contained true -o ./publish
+
+    - name: 📤 Upload Archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: BBR-Ban-Sync
+        path: ./output
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Download artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: BBR-Ban-Sync
+        path: ./output
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.sha }}
+        release_name: Release ${{ github.sha }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./output
+        asset_name: my-artifact.zip
+        asset_content_type: application/zip
