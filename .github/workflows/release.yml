@@ -39,7 +39,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: BBR-Ban-Sync
-        path: ./output
+        path: ./publish/**/*
 
   release:
     needs: build
@@ -71,6 +71,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./output
-        asset_name: my-artifact.zip
+        asset_path: ./publish/**/*
+        asset_name: BBR-Ban-Sync.zip
         asset_content_type: application/zip
