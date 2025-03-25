@@ -60,7 +60,42 @@ class Program
 
         SetupFileWatcher();
 
+        // Ajouter un timer pour vérifier les nouvelles versions toutes les heures
+        var releaseCheckTimer = new System.Timers.Timer(3600000); // 1 heure
+        releaseCheckTimer.Elapsed += async (sender, e) => await CheckForNewRelease();
+        releaseCheckTimer.Start();
+
+        if (debugMode)
+        {
+            logger.Info("Release check timer started.");
+        }
+
         await Task.Delay(-1); // Keep the application running
+    }
+    private static async Task CheckForNewRelease()
+    {
+        string repoOwner = "Royal-Multi-Gamers";
+        string repoName = "Ban-Sync-Sourcebans";
+        string currentVersion = "v0.0.1"; // Par exemple, "v1.0.0"
+
+        using (var client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", "C# App");
+
+            var response = await client.GetStringAsync($"https://api.github.com/repos/{repoOwner}/{repoName}/releases/latest");
+            var jsonResponse = JObject.Parse(response);
+            var latestVersion = jsonResponse["tag_name"]?.ToString();
+
+            if (!string.IsNullOrEmpty(latestVersion) && latestVersion != currentVersion)
+            {
+                logger.Info($"Nouvelle version disponible : {latestVersion}");
+                // Vous pouvez ajouter ici des actions supplémentaires, comme notifier l'utilisateur ou télécharger la nouvelle version.
+            }
+            else
+            {
+                logger.Info("Aucune nouvelle version disponible.");
+            }
+        }
     }
 
     private static void EnsureLogDirectoryExists()
