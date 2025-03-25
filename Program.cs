@@ -61,6 +61,9 @@ class Program
 
         SetupFileWatcher();
 
+        // Vérifier les nouvelles versions au démarrage
+        await CheckForNewRelease();
+
         // Ajouter un timer pour vérifier les nouvelles versions toutes les heures
         var releaseCheckTimer = new System.Timers.Timer(3600000); // 1 heure
         releaseCheckTimer.Elapsed += async (sender, e) => await CheckForNewRelease();
