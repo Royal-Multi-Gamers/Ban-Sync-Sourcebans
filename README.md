@@ -1,14 +1,15 @@
-[![Build .NET EXE](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml)
-# Application de Synchronisation de Bans depuis un fichier TXT vers Sourcebans et synchronise le Sourcebans vers un fichier TXT
+[![Create Release](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/release.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/release.yml)[![Build .NET EXE](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Royal-Multi-Gamers/Ban-Sync-Sourcebans/actions/workflows/dotnet.yml)
+# Application de C# Console de Synchronisation de Bans depuis un fichier TXT vers Sourcebans et synchronise le Sourcebans vers un fichier TXT
 
 ## Description
 
-Cette application synchronise les identifiants Steam (SteamID) d'une base de données MySQL (Sourcebans++) vers un fichier de sortie txt. Elle surveille également les modifications du fichier de sortie et met à jour la base de données en conséquence. L'application utilise l'API Steam pour convertir les SteamID64 en SteamID2 et récupérer les noms des joueurs.
+Cette application C# Console synchronise les identifiants Steam (SteamID2) d'une base de données MySQL (Sourcebans++) vers un fichier de sortie txt (SteamID64). Elle surveille également les modifications du fichier de sortie et met à jour la base de données en conséquence. L'application utilise l'API Steam pour convertir les SteamID64 en SteamID2 et récupérer les noms des joueurs.
 
 ## Fonctionnalités
 
 - Synchronisation initiale de la base de données vers le fichier de sortie.
 - Surveillance des modifications du fichier de sortie et mise à jour de la base de données.
+- Envoi d'un message Discord Embed pour tout nouveau Ban
 - Conversion des SteamID64 en SteamID2.
 - Récupération des noms des joueurs via l'API Steam.
 - Journalisation des événements et des erreurs avec NLog.
@@ -65,12 +66,22 @@ L'application utilise GitHub Actions pour le déploiement. Le workflow de déplo
 6. Publication de l'application.
 7. Création des artefacts.
 
+
+## Déploiement
+
+L'application utilise GitHub Actions pour le déploiement. Le workflow de déploiement se trouve dans `.github/workflows/dotnet.yml`. Voici les étapes principales :
+
+1. Récupération du dépôt.
+2. Compilation de l'application.
+3. Recupération de l'artefact du Build pour upload en release.
+4. Mise en ligne du .ZIP dans le release.
+
 ## Exécution
 
 Pour exécuter l'application, utilisez la commande suivante :
 
 ```
-dotnet run
+dotnet run BBR-Ban-Sync.dll
 ```
 
 Assurez-vous que le fichier `config.json` est correctement configuré avant de lancer l'application.
@@ -86,3 +97,6 @@ Les contributions sont les bienvenues ! Veuillez soumettre des pull requests et 
 ## Licence
 
 Ce projet est open source et disponible sous licence MIT.
+
+## Royal Multi Gamers Association
+## https://www.clan-rmg.com/
