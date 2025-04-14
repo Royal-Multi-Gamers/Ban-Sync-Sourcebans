@@ -12,7 +12,7 @@ using NLog;
 class Program
 {
     private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-    private const string currentVersion = "v0.0.3"; // Définir la version ici
+    private const string currentVersion = "v0.0.4";
     private static string connectionString = string.Empty;
     private static string outputFile = string.Empty;
     private static string steamAPIKey = string.Empty;
@@ -22,6 +22,9 @@ class Program
     private static FileSystemWatcher? watcher = new();
     private static List<string> lastLines = new();
     private static readonly HttpClient client = new();
+    private static bool discordWebhookEnabled;
+    private static List<string> discordWebhookUrls = new();
+    private static bool isProcessing = false;
 
     static async Task Main()
     {
@@ -30,7 +33,7 @@ class Program
         LoadConfiguration();
 
         logger.Info("Application started.");
-        logger.Info($"Current software version: {currentVersion}"); // Logger la version ici
+        logger.Info($"Current software version: {currentVersion}");
 
         if (debugMode)
         {
@@ -43,17 +46,13 @@ class Program
             return;
         }
 
-        // Initialize lastLines with the current content of the file
         lastLines = new List<string>(File.ReadAllLines(outputFile));
-
-        // Execute database extraction at startup
         await SyncDatabaseToFile();
 
-        // Create a dummy FileSystemEventArgs to call OnChanged at startup
         var dummyEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(outputFile) ?? string.Empty, Path.GetFileName(outputFile));
         await OnChanged(dummyEventArgs);
 
-        timer = new System.Timers.Timer(60000); // 1 minute
+        timer = new System.Timers.Timer(60000);
         timer.Elapsed += async (sender, e) => await SyncDatabaseToFile();
         timer.Start();
 
@@ -63,12 +62,9 @@ class Program
         }
 
         SetupFileWatcher();
-
-        // Vérifier les nouvelles versions au démarrage
         await CheckForNewRelease();
 
-        // Ajouter un timer pour vérifier les nouvelles versions toutes les heures
-        var releaseCheckTimer = new System.Timers.Timer(3600000); // 1 heure
+        var releaseCheckTimer = new System.Timers.Timer(3600000);
         releaseCheckTimer.Elapsed += async (sender, e) => await CheckForNewRelease();
         releaseCheckTimer.Start();
 
@@ -77,7 +73,7 @@ class Program
             logger.Info("Release check timer started.");
         }
 
-        await Task.Delay(-1); // Keep the application running
+        await Task.Delay(-1);
     }
 
     private static async Task CheckForNewRelease()
@@ -94,7 +90,6 @@ class Program
         if (!string.IsNullOrEmpty(latestVersion) && latestVersion != currentVersion)
         {
             logger.Info($"Nouvelle version disponible : {latestVersion}");
-            // Vous pouvez ajouter ici des actions supplémentaires, comme notifier l'utilisateur ou télécharger la nouvelle version.
         }
         else
         {
@@ -111,9 +106,6 @@ class Program
         }
     }
 
-    private static bool discordWebhookEnabled;
-    private static List<string> discordWebhookUrls = new();
-
     private static void LoadConfiguration()
     {
         const string configFilePath = "config.json";
@@ -125,14 +117,8 @@ class Program
 
         var config = JObject.Parse(File.ReadAllText(configFilePath));
 
-        var connectionStringConfig = config["ConnectionString"];
-        if (connectionStringConfig != null)
-        {
-            connectionString = $"server={connectionStringConfig["Server"]};uid={connectionStringConfig["Uid"]};pwd={connectionStringConfig["Pwd"]};database={connectionStringConfig["Database"]}";
-        }
-
-        var outputFilePath = config["OutputFile"]?.ToString() ?? string.Empty;
-        outputFile = Environment.GetEnvironmentVariable(outputFilePath) ?? outputFilePath;
+        connectionString = $"server={config["ConnectionString"]?["Server"]};uid={config["ConnectionString"]?["Uid"]};pwd={config["ConnectionString"]?["Pwd"]};database={config["ConnectionString"]?["Database"]}";
+        outputFile = Environment.GetEnvironmentVariable(config["OutputFile"]?.ToString() ?? string.Empty) ?? config["OutputFile"]?.ToString() ?? string.Empty;
         steamAPIKey = config["SteamAPIKey"]?.ToString() ?? string.Empty;
         serverID = (int)(config["ServerID"] ?? 0);
         debugMode = (bool)(config["DebugMode"] ?? false);
@@ -193,8 +179,6 @@ class Program
         }
     }
 
-    private static bool isProcessing = false;
-
     private static async Task OnChanged(FileSystemEventArgs e)
     {
         if (isProcessing)
@@ -215,7 +199,7 @@ class Program
 
         List<string> currentLines = new();
 
-        for (int i = 0; i < 5; i++) // Retry up to 5 times
+        for (int i = 0; i < 5; i++)
         {
             try
             {
@@ -223,7 +207,7 @@ class Program
                 using var reader = new StreamReader(stream);
                 var currentLinesContent = await reader.ReadToEndAsync();
                 currentLines = new List<string>(currentLinesContent.Split(new[] { Environment.NewLine }, StringSplitOptions.None));
-                break; // Exit loop if successful
+                break;
             }
             catch (IOException ex)
             {
@@ -231,7 +215,7 @@ class Program
                 {
                     logger.Error($"IOException encountered: {ex.Message}");
                 }
-                await Task.Delay(100); // Wait 100ms before retrying
+                await Task.Delay(100);
             }
         }
 
@@ -274,7 +258,6 @@ class Program
             }
         }
 
-        // Update lastLines with the current content of the file
         lastLines = currentLines;
 
         if (debugMode)
@@ -284,6 +267,7 @@ class Program
 
         isProcessing = false;
     }
+
     private static async Task SendDiscordWebhook(string steamID64, string playerName)
     {
         if (!discordWebhookEnabled || discordWebhookUrls.Count == 0)
@@ -296,7 +280,7 @@ class Program
         {
             title = "Ban Notification",
             description = $"Le joueur **{playerName}** avec le SteamID64 : **{steamID64}** est banni du serveur BattleBit Remastered.\nPour toutes réclamations, aller sur : https://www.clan-rmg.com/playerpanel/",
-            color = 16711680 // Rouge
+            color = 16711680
         };
 
         var payload = new
@@ -312,7 +296,6 @@ class Program
         }
     }
 
-
     private static async Task AddSteamIDToDatabase(string steamID64)
     {
         if (debugMode)
@@ -320,8 +303,7 @@ class Program
             logger.Info($"Checking if SteamID {steamID64} needs to be added to the database...");
         }
 
-        // Vérifiez d'abord si le SteamID64 est déjà dans la base de données
-        var steamID2 = await ConvertSteamID64ToSteamID2(steamID64);
+        var steamID2 = ConvertSteamID64ToSteamID2(steamID64);
         if (steamID2 == null)
         {
             if (debugMode)
@@ -340,7 +322,6 @@ class Program
             return;
         }
 
-        // Si le SteamID64 n'est pas dans la base de données, appelez l'API Steam pour obtenir le nom du joueur
         var name = await GetSteamName(steamID64);
         if (name == null)
         {
@@ -384,7 +365,6 @@ class Program
             logger.Info($"Added SteamID {steamID64} as {steamID2} to database.");
         }
 
-        // Send Discord webhook notification
         await SendDiscordWebhook(steamID64, name);
     }
 
@@ -412,18 +392,8 @@ class Program
         return count > 0;
     }
 
-    private static async Task<string?> ConvertSteamID64ToSteamID2(string steamID64)
+    private static string? ConvertSteamID64ToSteamID2(string steamID64)
     {
-        var response = await client.GetStringAsync($"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steamAPIKey}&steamids={steamID64}");
-        var jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(response);
-        var players = jsonResponse?.response?.players as JArray;
-
-        if (players == null || players.Count == 0)
-        {
-            logger.Error($"No player found for SteamID64: {steamID64}");
-            return null; // Or handle it as per your application's requirement
-        }
-
         if (!long.TryParse(steamID64, out long steamID64Long))
         {
             throw new ArgumentException("Invalid SteamID64 format");
@@ -432,8 +402,7 @@ class Program
         long z = (steamID64Long - 76561197960265728) / 2;
         int y = (steamID64Long - 76561197960265728) % 2 == 0 ? 0 : 1;
 
-        string steamID2 = $"STEAM_0:{y}:{z}";
-        return steamID2;
+        return $"STEAM_0:{y}:{z}";
     }
 
     private static async Task<string?> GetSteamName(string steamID64)
@@ -451,15 +420,7 @@ class Program
             }
 
             var player = players[0];
-            string? playerName = player?["personaname"]?.ToString();
-
-            if (string.IsNullOrEmpty(playerName))
-            {
-                logger.Error($"Player name not found for SteamID64: {steamID64}");
-                return null;
-            }
-
-            return playerName;
+            return player?["personaname"]?.ToString();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
         {
@@ -480,7 +441,6 @@ class Program
             logger.Info("Synchronizing database to file...");
         }
 
-        // Lire les SteamID64 actuels du fichier
         var currentSteamIDs = new HashSet<string>();
         if (File.Exists(outputFile))
         {
@@ -507,7 +467,6 @@ class Program
             newSteamIDs.Add(steamID64);
         }
 
-        // Comparer les SteamID64 actuels avec ceux de la base de données
         var addedSteamIDs = newSteamIDs.Except(currentSteamIDs).ToList();
 
         if (debugMode)
@@ -515,12 +474,10 @@ class Program
             logger.Info($"Writing {newSteamIDs.Count} unique SteamIDs to file.");
         }
 
-        // Vérifier si le contenu a changé avant d'écrire dans le fichier
         if (!currentSteamIDs.SetEquals(newSteamIDs))
         {
             await File.WriteAllLinesAsync(outputFile, newSteamIDs);
 
-            // Envoyer des notifications pour les nouveaux SteamID64
             foreach (var steamID64 in addedSteamIDs)
             {
                 var playerName = await GetSteamName(steamID64);
@@ -546,7 +503,6 @@ class Program
 
     private static Task<string> ConvertSteamID2ToSteamID64(string steamID2)
     {
-        // Example SteamID2: STEAM_0:1:12345678
         var parts = steamID2.Split(':');
         if (parts.Length != 3 || !parts[0].Equals("STEAM_0"))
         {
