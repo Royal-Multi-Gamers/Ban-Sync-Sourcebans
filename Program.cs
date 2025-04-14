@@ -11,6 +11,7 @@ using NLog;
 class Program
 {
     private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+    private const string currentVersion = "v0.0.3"; // Définir la version ici
     private static string connectionString = string.Empty;
     private static string outputFile = string.Empty;
     private static string steamAPIKey = string.Empty;
@@ -28,6 +29,7 @@ class Program
         LoadConfiguration();
 
         logger.Info("Application started.");
+        logger.Info($"Current software version: {currentVersion}"); // Logger la version ici
 
         if (debugMode)
         {
@@ -76,11 +78,11 @@ class Program
 
         await Task.Delay(-1); // Keep the application running
     }
+
     private static async Task CheckForNewRelease()
     {
         string repoOwner = "Royal-Multi-Gamers";
         string repoName = "Ban-Sync-Sourcebans";
-        string currentVersion = "v0.0.2"; // Par exemple, "v1.0.0"
 
         client.DefaultRequestHeaders.Add("User-Agent", "C# App");
 
@@ -109,7 +111,7 @@ class Program
     }
 
     private static bool discordWebhookEnabled;
-private static List<string> discordWebhookUrls = new();
+    private static List<string> discordWebhookUrls = new();
 
     private static void LoadConfiguration()
     {
@@ -246,9 +248,21 @@ private static List<string> discordWebhookUrls = new();
             logger.Info($"Current lines count: {currentLines.Count}");
         }
 
-        foreach (var line in currentLines)
+        var newLines = currentLines.Except(lastLines).ToList();
+
+        if (newLines.Count == 0)
         {
-            if (!string.IsNullOrWhiteSpace(line) && !lastLines.Contains(line))
+            if (debugMode)
+            {
+                logger.Info("No new lines detected.");
+            }
+            isProcessing = false;
+            return;
+        }
+
+        foreach (var line in newLines)
+        {
+            if (!string.IsNullOrWhiteSpace(line))
             {
                 if (!debugMode)
                 {
