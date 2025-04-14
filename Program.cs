@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
@@ -249,8 +250,9 @@ class Program
         }
 
         var newLines = currentLines.Except(lastLines).ToList();
+        var removedLines = lastLines.Except(currentLines).ToList();
 
-        if (newLines.Count == 0)
+        if (newLines.Count == 0 && removedLines.Count == 0)
         {
             if (debugMode)
             {
@@ -315,16 +317,11 @@ class Program
     {
         if (debugMode)
         {
-            logger.Info($"Adding SteamID {steamID64} to database...");
+            logger.Info($"Checking if SteamID {steamID64} needs to be added to the database...");
         }
 
+        // Vérifiez d'abord si le SteamID64 est déjà dans la base de données
         var steamID2 = await ConvertSteamID64ToSteamID2(steamID64);
-
-        if (debugMode)
-        {
-            logger.Info($"Converted SteamID64 {steamID64} to SteamID2 {steamID2}");
-        }
-
         if (steamID2 == null)
         {
             if (debugMode)
@@ -343,6 +340,7 @@ class Program
             return;
         }
 
+        // Si le SteamID64 n'est pas dans la base de données, appelez l'API Steam pour obtenir le nom du joueur
         var name = await GetSteamName(steamID64);
         if (name == null)
         {
@@ -440,26 +438,39 @@ class Program
 
     private static async Task<string?> GetSteamName(string steamID64)
     {
-        var response = await client.GetStringAsync($"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steamAPIKey}&steamids={steamID64}");
-        var jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(response);
-        var players = jsonResponse?.response?.players as JArray;
-
-        if (players == null || players.Count == 0)
+        try
         {
-            logger.Error($"No player found for SteamID64: {steamID64}");
-            return null; // Or handle it as per your application's requirement
+            var response = await client.GetStringAsync($"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steamAPIKey}&steamids={steamID64}");
+            var jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(response);
+            var players = jsonResponse?.response?.players as JArray;
+
+            if (players == null || players.Count == 0)
+            {
+                logger.Error($"No player found for SteamID64: {steamID64}");
+                return null;
+            }
+
+            var player = players[0];
+            string? playerName = player?["personaname"]?.ToString();
+
+            if (string.IsNullOrEmpty(playerName))
+            {
+                logger.Error($"Player name not found for SteamID64: {steamID64}");
+                return null;
+            }
+
+            return playerName;
         }
-
-        var player = players[0];
-        string? playerName = player?["personaname"]?.ToString();
-
-        if (string.IsNullOrEmpty(playerName))
+        catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
         {
-            logger.Error($"Player name not found for SteamID64: {steamID64}");
-            return null; // Or handle it as per your application's requirement
+            logger.Warn("API rate limit exceeded. Skipping this request.");
+            return null;
         }
-
-        return playerName;
+        catch (Exception ex)
+        {
+            logger.Error(ex, "An error occurred while fetching the Steam name.");
+            throw;
+        }
     }
 
     private static async Task SyncDatabaseToFile()
@@ -504,21 +515,32 @@ class Program
             logger.Info($"Writing {newSteamIDs.Count} unique SteamIDs to file.");
         }
 
-        await File.WriteAllLinesAsync(outputFile, newSteamIDs);
-
-        // Envoyer des notifications pour les nouveaux SteamID64
-        foreach (var steamID64 in addedSteamIDs)
+        // Vérifier si le contenu a changé avant d'écrire dans le fichier
+        if (!currentSteamIDs.SetEquals(newSteamIDs))
         {
-            var playerName = await GetSteamName(steamID64);
-            if (playerName != null)
+            await File.WriteAllLinesAsync(outputFile, newSteamIDs);
+
+            // Envoyer des notifications pour les nouveaux SteamID64
+            foreach (var steamID64 in addedSteamIDs)
             {
-                await SendDiscordWebhook(steamID64, playerName);
+                var playerName = await GetSteamName(steamID64);
+                if (playerName != null)
+                {
+                    await SendDiscordWebhook(steamID64, playerName);
+                }
+            }
+
+            if (debugMode)
+            {
+                logger.Info("Synchronized database to file.");
             }
         }
-
-        if (debugMode)
+        else
         {
-            logger.Info("Synchronized database to file.");
+            if (debugMode)
+            {
+                logger.Info("No changes detected in the file. Skipping write operation.");
+            }
         }
     }
 
