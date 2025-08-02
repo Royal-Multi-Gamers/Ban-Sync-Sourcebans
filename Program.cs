@@ -136,7 +136,7 @@ class Program
         {
             var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient();
             var logger = provider.GetRequiredService<ILogger<GitHubService>>();
-            return new GitHubService(httpClient, logger, gitHubConfig);
+            return new GitHubService(httpClient, logger);
         });
     }
 

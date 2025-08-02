@@ -2,6 +2,7 @@ using BBR_Ban_Sync.Interfaces;
 using BBR_Ban_Sync.Models;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BBR_Ban_Sync.Services;
 
@@ -9,13 +10,15 @@ public class GitHubService : IGitHubService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GitHubService> _logger;
-    private readonly GitHubConfiguration _config;
 
-    public GitHubService(HttpClient httpClient, ILogger<GitHubService> logger, GitHubConfiguration config)
+    private readonly string _owner = "Royal-Multi-Gamers";
+    private readonly string _repository = "Ban-Sync-Sourcebans";
+    private readonly string _currentVersion = "v0.0.5";
+
+    public GitHubService(HttpClient httpClient, ILogger<GitHubService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
 
         // Set User-Agent header required by GitHub API
         if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
@@ -28,7 +31,7 @@ public class GitHubService : IGitHubService
     {
         try
         {
-            var url = $"https://api.github.com/repos/{_config.Owner}/{_config.Repository}/releases/latest";
+            var url = $"https://api.github.com/repos/{_owner}/{_repository}/releases/latest";
             
             _logger.LogDebug("Checking for new release at: {Url}", url);
 
@@ -55,7 +58,7 @@ public class GitHubService : IGitHubService
             }
 
             _logger.LogDebug("Latest version from GitHub: {LatestVersion}, Current version: {CurrentVersion}", 
-                latestVersion, _config.CurrentVersion);
+                latestVersion, _currentVersion);
 
             return latestVersion;
         }
@@ -75,17 +78,17 @@ public class GitHubService : IGitHubService
             return false;
         }
 
-        var isNewVersion = !string.Equals(latestVersion, _config.CurrentVersion, StringComparison.OrdinalIgnoreCase);
+        var isNewVersion = !string.Equals(latestVersion, _currentVersion, StringComparison.OrdinalIgnoreCase);
 
         if (isNewVersion)
         {
             _logger.LogInformation("New version available: {LatestVersion} (current: {CurrentVersion})", 
-                latestVersion, _config.CurrentVersion);
+                latestVersion, _currentVersion);
         }
         else
         {
             _logger.LogDebug("No new version available. Current version {CurrentVersion} is up to date", 
-                _config.CurrentVersion);
+                _currentVersion);
         }
 
         return isNewVersion;
@@ -95,6 +98,7 @@ public class GitHubService : IGitHubService
 // GitHub API response models
 internal class GitHubRelease
 {
+    [JsonPropertyName("tag_name")]
     public string? TagName { get; set; }
     public string? Name { get; set; }
     public bool Draft { get; set; }
