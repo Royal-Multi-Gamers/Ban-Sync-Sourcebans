@@ -13,7 +13,7 @@ public class GitHubService : IGitHubService
 
     private readonly string _owner = "Royal-Multi-Gamers";
     private readonly string _repository = "Ban-Sync-Sourcebans";
-    private readonly string _currentVersion = "v0.0.5";
+    private readonly string _currentVersion = "v0.0.6";
 
     public GitHubService(HttpClient httpClient, ILogger<GitHubService> logger)
     {

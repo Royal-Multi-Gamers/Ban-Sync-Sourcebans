@@ -61,12 +61,12 @@ class Program
                 // Configure options
                 services.Configure<BanSyncConfiguration>(configuration.GetSection(BanSyncConfiguration.SectionName));
                 services.Configure<DiscordConfiguration>(configuration.GetSection(DiscordConfiguration.SectionName));
-                services.Configure<GitHubConfiguration>(configuration.GetSection(GitHubConfiguration.SectionName));
+                // Removed GitHubConfiguration binding and validation as per user request
 
                 // Validate configurations
                 services.AddSingleton<IValidateOptions<BanSyncConfiguration>, BanSyncConfigurationValidator>();
                 services.AddSingleton<IValidateOptions<DiscordConfiguration>, DiscordConfigurationValidator>();
-                services.AddSingleton<IValidateOptions<GitHubConfiguration>, GitHubConfigurationValidator>();
+                // Removed GitHubConfigurationValidator registration as per user request
 
                 // Configure HttpClient
                 services.AddHttpClient();
@@ -94,8 +94,7 @@ class Program
         var discordConfig = configuration.GetSection(DiscordConfiguration.SectionName).Get<DiscordConfiguration>()
             ?? new DiscordConfiguration();
 
-        var gitHubConfig = configuration.GetSection(GitHubConfiguration.SectionName).Get<GitHubConfiguration>()
-            ?? throw new InvalidOperationException("GitHub configuration is missing");
+        // Removed GitHub configuration retrieval and exception as per user request
 
         // Database service
         var connectionString = configuration.GetConnectionString("DefaultConnection")
