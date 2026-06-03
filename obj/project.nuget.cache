@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "bhhcpz60J0Y=",
+  "dgSpecHash": "kZVXRu4iGHs=",
   "success": true,
   "projectFilePath": "E:\\GITHUB\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
   "expectedPackageFiles": [
@@ -44,7 +44,6 @@
     "C:\\Users\\thiba\\.nuget\\packages\\microsoft.extensions.telemetry\\8.10.0\\microsoft.extensions.telemetry.8.10.0.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\microsoft.extensions.telemetry.abstractions\\8.10.0\\microsoft.extensions.telemetry.abstractions.8.10.0.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\microsoft.io.recyclablememorystream\\3.0.0\\microsoft.io.recyclablememorystream.3.0.0.nupkg.sha512",
-    "C:\\Users\\thiba\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.27\\microsoft.net.illink.tasks.8.0.27.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\mysqlconnector\\2.4.0\\mysqlconnector.2.4.0.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\nlog\\5.4.0\\nlog.5.4.0.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\nlog.extensions.hosting\\5.4.0\\nlog.extensions.hosting.5.4.0.nupkg.sha512",
@@ -55,10 +54,7 @@
     "C:\\Users\\thiba\\.nuget\\packages\\system.diagnostics.eventlog\\8.0.0\\system.diagnostics.eventlog.8.0.0.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
     "C:\\Users\\thiba\\.nuget\\packages\\system.text.json\\8.0.0\\system.text.json.8.0.0.nupkg.sha512",
-    "C:\\Users\\thiba\\.nuget\\packages\\system.threading.ratelimiting\\8.0.0\\system.threading.ratelimiting.8.0.0.nupkg.sha512",
-    "C:\\Users\\thiba\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.27\\microsoft.netcore.app.runtime.win-x64.8.0.27.nupkg.sha512",
-    "C:\\Users\\thiba\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.27\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.27.nupkg.sha512",
-    "C:\\Users\\thiba\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.27\\microsoft.aspnetcore.app.runtime.win-x64.8.0.27.nupkg.sha512"
+    "C:\\Users\\thiba\\.nuget\\packages\\system.threading.ratelimiting\\8.0.0\\system.threading.ratelimiting.8.0.0.nupkg.sha512"
   ],
   "logs": []
 }
