@@ -136,33 +136,76 @@ public class DiscordService : IDiscordService
     {
         var jsonPayload = JsonSerializer.Serialize(payload, JsonOptions);
 
-        var tasks = _config.WebhookUrls.Select(async url =>
+        var tasks = _config.WebhookUrls.Select(url => SendToWebhookWithRateLimitAsync(url, jsonPayload, cancellationToken));
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task SendToWebhookWithRateLimitAsync(string url, string jsonPayload, CancellationToken cancellationToken)
+    {
+        const int maxAttempts = 3;
+        var maskedUrl = MaskWebhookUrl(url);
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
             using var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
             try
             {
-                _logger.LogDebug("Sending Discord webhook to: {Url}", MaskWebhookUrl(url));
+                _logger.LogDebug("Sending Discord webhook to: {Url} (attempt {Attempt})", maskedUrl, attempt);
 
                 using var response = await _httpClient.PostAsync(url, content, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogDebug("Successfully sent Discord webhook to: {Url}", MaskWebhookUrl(url));
+                    _logger.LogDebug("Successfully sent Discord webhook to: {Url}", maskedUrl);
+                    return;
                 }
-                else
+
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && attempt < maxAttempts)
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogWarning("Failed to send Discord webhook to {Url}. Status: {StatusCode}, Response: {Response}",
-                        MaskWebhookUrl(url), response.StatusCode, responseContent);
+                    var delay = await ComputeRetryDelayAsync(response, cancellationToken);
+                    _logger.LogWarning("Discord rate-limited webhook {Url}. Waiting {Delay}ms before retry.", maskedUrl, delay.TotalMilliseconds);
+                    await Task.Delay(delay, cancellationToken);
+                    continue;
                 }
+
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning("Failed to send Discord webhook to {Url}. Status: {StatusCode}, Response: {Response}",
+                    maskedUrl, response.StatusCode, responseContent);
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending Discord webhook to: {Url}", MaskWebhookUrl(url));
+                _logger.LogError(ex, "Error sending Discord webhook to: {Url}", maskedUrl);
+                return;
             }
-        });
+        }
+    }
 
-        await Task.WhenAll(tasks);
+    private static async Task<TimeSpan> ComputeRetryDelayAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.Headers.RetryAfter?.Delta is { } delta)
+            return delta;
+
+        // Discord returns JSON body { "retry_after": <seconds> } for 429
+        try
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            if (doc.RootElement.TryGetProperty("retry_after", out var retryProp) && retryProp.TryGetDouble(out var seconds))
+                return TimeSpan.FromSeconds(seconds);
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return TimeSpan.FromSeconds(1);
     }
 
     private static string MaskWebhookUrl(string url)

@@ -6,6 +6,7 @@ public interface IDatabaseService
 {
     Task<bool> IsSteamIdInDatabaseAsync(string steamId2, int serverId, CancellationToken cancellationToken = default);
     Task AddBanRecordAsync(BanRecord banRecord, CancellationToken cancellationToken = default);
+    Task<int> RemoveActiveBanAsync(string steamId2, int serverId, string reason, CancellationToken cancellationToken = default);
     Task<IEnumerable<string>> GetActiveBanSteamIdsAsync(int serverId, CancellationToken cancellationToken = default);
     Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default);
 }

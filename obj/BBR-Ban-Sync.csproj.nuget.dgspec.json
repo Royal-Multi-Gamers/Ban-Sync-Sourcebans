@@ -53,7 +53,7 @@
             },
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
-              "version": "[8.0.0, )"
+              "version": "[8.0.1, )"
             },
             "Microsoft.Extensions.Hosting": {
               "target": "Package",
@@ -61,15 +61,25 @@
             },
             "Microsoft.Extensions.Http": {
               "target": "Package",
-              "version": "[8.0.0, )"
+              "version": "[8.0.1, )"
+            },
+            "Microsoft.Extensions.Http.Resilience": {
+              "target": "Package",
+              "version": "[8.10.0, )"
             },
             "Microsoft.Extensions.Logging": {
               "target": "Package",
-              "version": "[8.0.0, )"
+              "version": "[8.0.1, )"
             },
             "Microsoft.Extensions.Options.DataAnnotations": {
               "target": "Package",
               "version": "[8.0.0, )"
+            },
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.27, )",
+              "autoReferenced": true
             },
             "MySqlConnector": {
               "target": "Package",
@@ -95,12 +105,31 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[8.0.27, 8.0.27]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[8.0.27, 8.0.27]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[8.0.27, 8.0.27]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.421/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

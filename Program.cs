@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using NLog;
 using NLog.Extensions.Hosting;
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 
 namespace BBR_Ban_Sync;
 
@@ -69,9 +70,6 @@ class Program
                     .Bind(configuration.GetSection(GitHubConfiguration.SectionName))
                     .ValidateDataAnnotations()
                     .ValidateOnStart();
-
-                services.AddHttpClient();
-                services.AddHttpClient<IGitHubService, GitHubService>();
 
                 RegisterServices(services, configuration);
 
@@ -157,20 +155,55 @@ class Program
             return new DatabaseService(connectionString, log, banSyncConfig.MaxRetryAttempts, banSyncConfig.RetryDelaySeconds);
         });
 
+        services.AddHttpClient("steam", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(20);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("BBR-Ban-Sync");
+        })
+        .AddStandardResilienceHandler();
+
+        services.AddHttpClient("discord", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .AddStandardResilienceHandler();
+
+        services.AddHttpClient("github", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+            var asm = Assembly.GetExecutingAssembly();
+            var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(info))
+            {
+                var plus = info.IndexOf('+');
+                if (plus >= 0) info = info[..plus];
+            }
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"BBR-Ban-Sync/{info ?? "0.0.0"}");
+        })
+        .AddStandardResilienceHandler();
+
         services.AddSingleton<ISteamService>(provider =>
         {
-            var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var http = provider.GetRequiredService<IHttpClientFactory>().CreateClient("steam");
             var log = provider.GetRequiredService<ILogger<SteamService>>();
-            var cacheExpiration = TimeSpan.FromMinutes(banSyncConfig.CacheExpirationMinutes);
-            return new SteamService(httpClient, log, banSyncConfig.SteamAPIKey, cacheExpiration);
+            var opts = provider.GetRequiredService<IOptions<BanSyncConfiguration>>();
+            return new SteamService(http, log, opts);
         });
 
         services.AddSingleton<IDiscordService>(provider =>
         {
-            var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var http = provider.GetRequiredService<IHttpClientFactory>().CreateClient("discord");
             var log = provider.GetRequiredService<ILogger<DiscordService>>();
-            var discordConfig = provider.GetRequiredService<IOptions<DiscordConfiguration>>().Value;
-            return new DiscordService(httpClient, log, discordConfig);
+            var cfg = provider.GetRequiredService<IOptions<DiscordConfiguration>>().Value;
+            return new DiscordService(http, log, cfg);
+        });
+
+        services.AddSingleton<IGitHubService>(provider =>
+        {
+            var http = provider.GetRequiredService<IHttpClientFactory>().CreateClient("github");
+            var log = provider.GetRequiredService<ILogger<GitHubService>>();
+            var opts = provider.GetRequiredService<IOptions<GitHubConfiguration>>();
+            return new GitHubService(http, log, opts);
         });
 
         services.AddSingleton<IFileWatcherService>(provider =>

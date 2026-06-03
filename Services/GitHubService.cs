@@ -26,11 +26,6 @@ public class GitHubService : IGitHubService
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
-
-        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
-        {
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"BBR-Ban-Sync/{CurrentVersion}");
-        }
     }
 
     private string CurrentVersion =>

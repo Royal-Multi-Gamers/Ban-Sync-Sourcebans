@@ -1,6 +1,7 @@
 using BBR_Ban_Sync.Interfaces;
 using BBR_Ban_Sync.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
@@ -23,12 +24,13 @@ public class SteamService : ISteamService
     private readonly ConcurrentDictionary<string, SteamPlayer> _playerCache = new();
     private readonly TimeSpan _cacheExpiration;
 
-    public SteamService(HttpClient httpClient, ILogger<SteamService> logger, string steamApiKey, TimeSpan cacheExpiration)
+    public SteamService(HttpClient httpClient, ILogger<SteamService> logger, IOptions<BanSyncConfiguration> config)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _steamApiKey = steamApiKey ?? throw new ArgumentNullException(nameof(steamApiKey));
-        _cacheExpiration = cacheExpiration;
+        var cfg = config?.Value ?? throw new ArgumentNullException(nameof(config));
+        _steamApiKey = cfg.SteamAPIKey ?? throw new ArgumentNullException(nameof(cfg.SteamAPIKey));
+        _cacheExpiration = TimeSpan.FromMinutes(cfg.CacheExpirationMinutes);
     }
 
     public async Task<string?> GetPlayerNameAsync(string steamId64, CancellationToken cancellationToken = default)

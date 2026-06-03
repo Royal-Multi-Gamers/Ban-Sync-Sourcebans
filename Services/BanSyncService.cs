@@ -43,12 +43,6 @@ public class BanSyncService : BackgroundService
 
         try
         {
-            if (!await _databaseService.TestConnectionAsync(stoppingToken))
-            {
-                _logger.LogError("Database connection test failed. Service cannot start.");
-                return;
-            }
-
             if (_config.DebugMode)
             {
                 await _discordService.TestWebhookAsync(stoppingToken);
@@ -157,11 +151,41 @@ public class BanSyncService : BackgroundService
             });
     }
 
-    private Task OnLinesRemoved(IEnumerable<string> removedLines)
+    private async Task OnLinesRemoved(IEnumerable<string> removedLines)
     {
-        var count = removedLines.Count();
-        _logger.LogInformation("Detected {Count} removed lines from file", count);
-        return Task.CompletedTask;
+        var lines = removedLines.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToList();
+        _logger.LogInformation("Detected {Count} removed lines from file", lines.Count);
+
+        await Parallel.ForEachAsync(
+            lines,
+            new ParallelOptions { MaxDegreeOfParallelism = 4 },
+            async (steamId64, ct) =>
+            {
+                try
+                {
+                    if (!_steamService.IsValidSteamId64(steamId64))
+                    {
+                        _logger.LogWarning("Invalid SteamID64 in removed lines: {SteamId64}", steamId64);
+                        return;
+                    }
+
+                    var steamId2 = _steamService.ConvertSteamId64ToSteamId2(steamId64);
+                    var removed = await _databaseService.RemoveActiveBanAsync(
+                        steamId2,
+                        _config.ServerID,
+                        "Removed via Ban Sync file",
+                        ct);
+
+                    if (removed > 0)
+                    {
+                        _logger.LogInformation("Unbanned {SteamId64} ({SteamId2}) — removed from file", steamId64, steamId2);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing removed line: {SteamId64}", steamId64);
+                }
+            });
     }
 
     private async Task ProcessNewSteamIdAsync(string steamId64, CancellationToken cancellationToken = default)
@@ -209,8 +233,7 @@ public class BanSyncService : BackgroundService
     {
         try
         {
-            if (_config.DebugMode)
-                _logger.LogDebug("Starting database to file synchronization");
+            _logger.LogInformation("Sync tick: comparing file and database...");
 
             var currentSteamIds = new HashSet<string>(StringComparer.Ordinal);
             try
@@ -239,14 +262,15 @@ public class BanSyncService : BackgroundService
 
             if (currentSteamIds.SetEquals(activeBanSteamIds64))
             {
-                if (_config.DebugMode)
-                    _logger.LogDebug("No changes detected during sync");
+                _logger.LogInformation("Sync tick: no changes ({Count} active bans in sync)", activeBanSteamIds64.Count);
                 return;
             }
 
+            var newlyAddedIds = activeBanSteamIds64.Except(currentSteamIds).ToList();
+            var removedIds = currentSteamIds.Except(activeBanSteamIds64).ToList();
+
             await _fileWatcherService.WriteFileAsync(activeBanSteamIds64, cancellationToken);
 
-            var newlyAddedIds = activeBanSteamIds64.Except(currentSteamIds).ToList();
             if (newlyAddedIds.Count > 0)
             {
                 var players = await _steamService.GetPlayerInfoBatchAsync(newlyAddedIds, cancellationToken);
@@ -261,7 +285,8 @@ public class BanSyncService : BackgroundService
                 }
             }
 
-            _logger.LogInformation("Synchronized {Count} active bans to file", activeBanSteamIds64.Count);
+            _logger.LogInformation("Sync tick: wrote {Total} bans to file (+{Added} added, -{Removed} removed)",
+                activeBanSteamIds64.Count, newlyAddedIds.Count, removedIds.Count);
         }
         catch (Exception ex)
         {

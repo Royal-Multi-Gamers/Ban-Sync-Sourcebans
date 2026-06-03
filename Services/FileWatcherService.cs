@@ -12,6 +12,10 @@ public class FileWatcherService : IFileWatcherService, IDisposable
     private readonly SemaphoreSlim _processingLock = new(1, 1);
     private bool _disposed = false;
 
+    private static readonly TimeSpan DebounceInterval = TimeSpan.FromMilliseconds(500);
+    private CancellationTokenSource? _debounceCts;
+    private readonly object _debounceLock = new();
+
     public event Func<IEnumerable<string>, Task>? OnNewLinesDetected;
     public event Func<IEnumerable<string>, Task>? OnLinesRemoved;
 
@@ -45,7 +49,8 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         _watcher = new FileSystemWatcher(directory)
         {
             Filter = fileName,
-            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName
+            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
+            InternalBufferSize = 65536
         };
 
         _watcher.Changed += OnFileChanged;
@@ -164,7 +169,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
     {
         try
         {
-            await ProcessFileChangeAsync(e);
+            await DebouncedProcessAsync(e);
         }
         catch (Exception ex)
         {
@@ -176,12 +181,35 @@ public class FileWatcherService : IFileWatcherService, IDisposable
     {
         try
         {
-            await ProcessFileChangeAsync(e);
+            await DebouncedProcessAsync(e);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled error in file watcher rename handler");
         }
+    }
+
+    private async Task DebouncedProcessAsync(FileSystemEventArgs e)
+    {
+        CancellationToken token;
+        lock (_debounceLock)
+        {
+            _debounceCts?.Cancel();
+            _debounceCts?.Dispose();
+            _debounceCts = new CancellationTokenSource();
+            token = _debounceCts.Token;
+        }
+
+        try
+        {
+            await Task.Delay(DebounceInterval, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return; // superseded by a newer event
+        }
+
+        await ProcessFileChangeAsync(e);
     }
 
     private void OnWatcherError(object sender, ErrorEventArgs e)
@@ -200,9 +228,6 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         try
         {
             _logger.LogDebug("File change detected: {ChangeType} - {FilePath}", e.ChangeType, e.FullPath);
-
-            // Small delay to ensure file write is complete
-            await Task.Delay(200);
 
             var currentLines = new HashSet<string>(await ReadFileAsync(), StringComparer.Ordinal);
 
@@ -253,6 +278,12 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         {
             _watcher?.Dispose();
             _processingLock?.Dispose();
+            lock (_debounceLock)
+            {
+                _debounceCts?.Cancel();
+                _debounceCts?.Dispose();
+                _debounceCts = null;
+            }
             _disposed = true;
         }
     }

@@ -117,6 +117,44 @@ public class DatabaseService : IDatabaseService
         }, $"AddBanRecord({banRecord.AuthId})");
     }
 
+    public async Task<int> RemoveActiveBanAsync(string steamId2, int serverId, string reason, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(steamId2))
+            throw new ArgumentException("SteamID2 cannot be null or empty", nameof(steamId2));
+
+        return await ExecuteWithRetryAsync(async () =>
+        {
+            await using var connection = new MySqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            const string query = @"
+                UPDATE sb_bans
+                SET RemoveType = 'U', RemovedBy = 0, RemovedOn = @removedOn, ureason = @ureason
+                WHERE authid = @authid AND RemoveType IS NULL AND (sid = 0 OR sid = @sid)";
+
+            await using var command = new MySqlCommand(query, connection);
+            command.Parameters.Add("@authid", MySqlDbType.VarChar).Value = steamId2;
+            command.Parameters.Add("@sid", MySqlDbType.Int32).Value = serverId;
+            command.Parameters.Add("@removedOn", MySqlDbType.Int32).Value = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            command.Parameters.Add("@ureason", MySqlDbType.Text).Value = reason ?? "Removed via Ban Sync file";
+
+            var rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
+
+            if (rowsAffected > 0)
+            {
+                _logger.LogInformation("Marked {Count} active ban(s) as removed for {SteamId2} on server {ServerId}",
+                    rowsAffected, steamId2, serverId);
+            }
+            else
+            {
+                _logger.LogDebug("No active ban found to remove for {SteamId2} on server {ServerId}",
+                    steamId2, serverId);
+            }
+
+            return rowsAffected;
+        }, $"RemoveActiveBan({steamId2})");
+    }
+
     public async Task<IEnumerable<string>> GetActiveBanSteamIdsAsync(int serverId, CancellationToken cancellationToken = default)
     {
         return await ExecuteWithRetryAsync(async () =>
