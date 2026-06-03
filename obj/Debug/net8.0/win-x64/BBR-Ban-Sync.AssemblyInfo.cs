@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BBR-Ban-Sync")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("0.0.6.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("v0.0.6+cee6807d28253272d6f74bb0cc24b2b1194c3ed9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("v0.0.6+450b0a3472c23a7b09d0acad13ed5e25dc24e531")]
 [assembly: System.Reflection.AssemblyProductAttribute("BBR-Ban-Sync")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BBR-Ban-Sync")]
 [assembly: System.Reflection.AssemblyVersionAttribute("0.0.6.0")]

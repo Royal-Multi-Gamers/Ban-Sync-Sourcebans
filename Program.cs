@@ -22,7 +22,7 @@ class Program
         try
         {
             LogManager.Setup().LoadConfigurationFromFile("NLog.config");
-            logger.Info("Application starting...");
+            logger.Info("Application starting... v{Version}", GetAppVersion());
 
             EnsureAppSettingsExists();
 
@@ -82,6 +82,16 @@ class Program
             })
             .UseNLog()
             .UseConsoleLifetime();
+
+    private static string GetAppVersion()
+    {
+        var info = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (string.IsNullOrWhiteSpace(info))
+            return "0.0.0";
+        var plus = info.IndexOf('+');
+        return plus >= 0 ? info[..plus] : info;
+    }
 
     private static void EnsureAppSettingsExists()
     {
@@ -171,14 +181,7 @@ class Program
         services.AddHttpClient("github", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(15);
-            var asm = Assembly.GetExecutingAssembly();
-            var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (!string.IsNullOrWhiteSpace(info))
-            {
-                var plus = info.IndexOf('+');
-                if (plus >= 0) info = info[..plus];
-            }
-            client.DefaultRequestHeaders.UserAgent.ParseAdd($"BBR-Ban-Sync/{info ?? "0.0.0"}");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"BBR-Ban-Sync/{GetAppVersion()}");
         })
         .AddStandardResilienceHandler();
 
