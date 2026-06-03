@@ -55,6 +55,5 @@ public class GitHubConfiguration
     [Required]
     public string Repository { get; set; } = string.Empty;
 
-    [Required]
     public string CurrentVersion { get; set; } = string.Empty;
 }

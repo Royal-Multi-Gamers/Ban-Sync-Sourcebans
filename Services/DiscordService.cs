@@ -8,6 +8,11 @@ namespace BBR_Ban_Sync.Services;
 
 public class DiscordService : IDiscordService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<DiscordService> _logger;
     private readonly DiscordConfiguration _config;
@@ -129,20 +134,16 @@ public class DiscordService : IDiscordService
 
     private async Task SendWebhookAsync(object payload, CancellationToken cancellationToken = default)
     {
-        var jsonPayload = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonPayload = JsonSerializer.Serialize(payload, JsonOptions);
 
         var tasks = _config.WebhookUrls.Select(async url =>
         {
+            using var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
             try
             {
                 _logger.LogDebug("Sending Discord webhook to: {Url}", MaskWebhookUrl(url));
 
-                var response = await _httpClient.PostAsync(url, content, cancellationToken);
+                using var response = await _httpClient.PostAsync(url, content, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {

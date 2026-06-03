@@ -15,9 +15,6 @@ public class BanSyncService : BackgroundService
     private readonly IGitHubService _gitHubService;
     private readonly ILogger<BanSyncService> _logger;
     private readonly BanSyncConfiguration _config;
-    private readonly Timer _syncTimer;
-    private readonly Timer _releaseCheckTimer;
-    private readonly Timer _cacheCleanupTimer;
 
     public BanSyncService(
         IDatabaseService databaseService,
@@ -36,12 +33,6 @@ public class BanSyncService : BackgroundService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
 
-        // Setup timers
-        _syncTimer = new Timer(SyncDatabaseToFileCallback, null, Timeout.Infinite, Timeout.Infinite);
-        _releaseCheckTimer = new Timer(CheckForNewReleaseCallback, null, Timeout.Infinite, Timeout.Infinite);
-        _cacheCleanupTimer = new Timer(CleanupCacheCallback, null, Timeout.Infinite, Timeout.Infinite);
-
-        // Subscribe to file watcher events
         _fileWatcherService.OnNewLinesDetected += OnNewLinesDetected;
         _fileWatcherService.OnLinesRemoved += OnLinesRemoved;
     }
@@ -52,45 +43,48 @@ public class BanSyncService : BackgroundService
 
         try
         {
-            // Test database connection
             if (!await _databaseService.TestConnectionAsync(stoppingToken))
             {
                 _logger.LogError("Database connection test failed. Service cannot start.");
                 return;
             }
 
-            // Test Discord webhook if enabled
             if (_config.DebugMode)
             {
                 await _discordService.TestWebhookAsync(stoppingToken);
             }
 
-            // Initial sync
             await SyncDatabaseToFileAsync(stoppingToken);
 
-            // Start file watcher if enabled
             if (_config.FileWatcherEnabled)
             {
                 await _fileWatcherService.StartAsync(stoppingToken);
                 _logger.LogInformation("File watcher started");
             }
 
-            // Start timers
-            var syncInterval = TimeSpan.FromMinutes(_config.SyncIntervalMinutes);
-            var releaseCheckInterval = TimeSpan.FromHours(_config.ReleaseCheckIntervalHours);
-            var cacheCleanupInterval = TimeSpan.FromMinutes(_config.CacheExpirationMinutes);
-
-            _syncTimer.Change(syncInterval, syncInterval);
-            _releaseCheckTimer.Change(releaseCheckInterval, releaseCheckInterval);
-            _cacheCleanupTimer.Change(cacheCleanupInterval, cacheCleanupInterval);
+            await CheckForNewReleaseAsync(stoppingToken);
 
             _logger.LogInformation("BanSyncService started successfully");
 
-            // Check for new release on startup
-            await CheckForNewReleaseAsync(stoppingToken);
+            var syncTask = RunPeriodicAsync(
+                TimeSpan.FromMinutes(_config.SyncIntervalMinutes),
+                SyncDatabaseToFileAsync,
+                "sync",
+                stoppingToken);
 
-            // Keep the service running
-            await Task.Delay(Timeout.Infinite, stoppingToken);
+            var releaseTask = RunPeriodicAsync(
+                TimeSpan.FromHours(_config.ReleaseCheckIntervalHours),
+                CheckForNewReleaseAsync,
+                "release-check",
+                stoppingToken);
+
+            var cacheTask = RunPeriodicAsync(
+                TimeSpan.FromMinutes(_config.CacheExpirationMinutes),
+                ct => { _steamService.CleanupExpiredCache(); return Task.CompletedTask; },
+                "cache-cleanup",
+                stoppingToken);
+
+            await Task.WhenAll(syncTask, releaseTask, cacheTask);
         }
         catch (OperationCanceledException)
         {
@@ -103,16 +97,37 @@ public class BanSyncService : BackgroundService
         }
     }
 
+    private async Task RunPeriodicAsync(TimeSpan interval, Func<CancellationToken, Task> action, string name, CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(interval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                try
+                {
+                    await action(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in periodic task '{Name}'", name);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // expected on shutdown
+        }
+    }
+
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("BanSyncService stopping...");
 
-        // Stop timers
-        await _syncTimer.DisposeAsync();
-        await _releaseCheckTimer.DisposeAsync();
-        await _cacheCleanupTimer.DisposeAsync();
-
-        // Stop file watcher
         if (_config.FileWatcherEnabled)
         {
             await _fileWatcherService.StopAsync(cancellationToken);
@@ -124,37 +139,32 @@ public class BanSyncService : BackgroundService
 
     private async Task OnNewLinesDetected(IEnumerable<string> newLines)
     {
-        var newLinesList = newLines.ToList();
+        var newLinesList = newLines.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToList();
         _logger.LogInformation("Processing {Count} new lines from file", newLinesList.Count);
 
-        foreach (var line in newLinesList)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            try
+        await Parallel.ForEachAsync(newLinesList,
+            new ParallelOptions { MaxDegreeOfParallelism = 4 },
+            async (line, ct) =>
             {
-                await ProcessNewSteamIdAsync(line.Trim());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing new SteamID: {SteamId}", line);
-            }
-        }
+                try
+                {
+                    await ProcessNewSteamIdAsync(line, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing new SteamID: {SteamId}", line);
+                }
+            });
     }
 
     private Task OnLinesRemoved(IEnumerable<string> removedLines)
     {
-        var removedLinesList = removedLines.ToList();
-        _logger.LogInformation("Detected {Count} removed lines from file", removedLinesList.Count);
-        
-        // Note: In the original implementation, removed lines weren't processed
-        // This could be extended to handle unbans if needed
-        
+        var count = removedLines.Count();
+        _logger.LogInformation("Detected {Count} removed lines from file", count);
         return Task.CompletedTask;
     }
 
-    private async Task ProcessNewSteamIdAsync(string steamId64)
+    private async Task ProcessNewSteamIdAsync(string steamId64, CancellationToken cancellationToken = default)
     {
         if (!_steamService.IsValidSteamId64(steamId64))
         {
@@ -164,25 +174,20 @@ public class BanSyncService : BackgroundService
 
         var steamId2 = _steamService.ConvertSteamId64ToSteamId2(steamId64);
 
-        // Check if already in database
-        if (await _databaseService.IsSteamIdInDatabaseAsync(steamId2))
+        if (await _databaseService.IsSteamIdInDatabaseAsync(steamId2, _config.ServerID, cancellationToken))
         {
             if (_config.DebugMode)
-            {
                 _logger.LogDebug("SteamID {SteamId64} already exists in database", steamId64);
-            }
             return;
         }
 
-        // Get player name
-        var playerName = await _steamService.GetPlayerNameAsync(steamId64);
+        var playerName = await _steamService.GetPlayerNameAsync(steamId64, cancellationToken);
         if (string.IsNullOrWhiteSpace(playerName))
         {
             _logger.LogWarning("Could not retrieve player name for SteamID64: {SteamId64}", steamId64);
             playerName = "Unknown Player";
         }
 
-        // Create ban record
         var banRecord = new BanRecord
         {
             AuthId = steamId2,
@@ -194,11 +199,8 @@ public class BanSyncService : BackgroundService
             IpAddress = ""
         };
 
-        // Add to database
-        await _databaseService.AddBanRecordAsync(banRecord);
-
-        // Send Discord notification
-        await _discordService.SendBanNotificationAsync(steamId64, playerName);
+        await _databaseService.AddBanRecordAsync(banRecord, cancellationToken);
+        await _discordService.SendBanNotificationAsync(steamId64, playerName, cancellationToken);
 
         _logger.LogInformation("Successfully processed new ban for {PlayerName} ({SteamId64})", playerName, steamId64);
     }
@@ -208,31 +210,26 @@ public class BanSyncService : BackgroundService
         try
         {
             if (_config.DebugMode)
-            {
                 _logger.LogDebug("Starting database to file synchronization");
-            }
 
-            // Get current file content
-            var currentSteamIds = new HashSet<string>();
+            var currentSteamIds = new HashSet<string>(StringComparer.Ordinal);
             try
             {
-                currentSteamIds = new HashSet<string>(await _fileWatcherService.ReadFileAsync(cancellationToken));
+                currentSteamIds = new HashSet<string>(await _fileWatcherService.ReadFileAsync(cancellationToken), StringComparer.Ordinal);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Could not read current file content, treating as empty");
             }
 
-            // Get active bans from database
             var activeBanSteamIds2 = await _databaseService.GetActiveBanSteamIdsAsync(_config.ServerID, cancellationToken);
-            var activeBanSteamIds64 = new HashSet<string>();
+            var activeBanSteamIds64 = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var steamId2 in activeBanSteamIds2)
             {
                 try
                 {
-                    var steamId64 = _steamService.ConvertSteamId2ToSteamId64(steamId2);
-                    activeBanSteamIds64.Add(steamId64);
+                    activeBanSteamIds64.Add(_steamService.ConvertSteamId2ToSteamId64(steamId2));
                 }
                 catch (Exception ex)
                 {
@@ -240,35 +237,25 @@ public class BanSyncService : BackgroundService
                 }
             }
 
-            // Check if there are changes
             if (currentSteamIds.SetEquals(activeBanSteamIds64))
             {
                 if (_config.DebugMode)
-                {
                     _logger.LogDebug("No changes detected during sync");
-                }
                 return;
             }
 
-            // Write updated content to file
             await _fileWatcherService.WriteFileAsync(activeBanSteamIds64, cancellationToken);
 
-            // Find newly added SteamIDs for Discord notifications
             var newlyAddedIds = activeBanSteamIds64.Except(currentSteamIds).ToList();
-            if (newlyAddedIds.Any())
+            if (newlyAddedIds.Count > 0)
             {
-                var notifications = new List<(string steamId64, string playerName)>();
+                var players = await _steamService.GetPlayerInfoBatchAsync(newlyAddedIds, cancellationToken);
+                var notifications = newlyAddedIds
+                    .Where(id => players.ContainsKey(id) && !string.IsNullOrWhiteSpace(players[id].PersonaName))
+                    .Select(id => (id, players[id].PersonaName))
+                    .ToList();
 
-                foreach (var steamId64 in newlyAddedIds)
-                {
-                    var playerName = await _steamService.GetPlayerNameAsync(steamId64, cancellationToken);
-                    if (!string.IsNullOrWhiteSpace(playerName))
-                    {
-                        notifications.Add((steamId64, playerName));
-                    }
-                }
-
-                if (notifications.Any())
+                if (notifications.Count > 0)
                 {
                     await _discordService.SendBulkBanNotificationAsync(notifications, cancellationToken);
                 }
@@ -286,13 +273,7 @@ public class BanSyncService : BackgroundService
     {
         try
         {
-            var isNewVersionAvailable = await _gitHubService.IsNewVersionAvailableAsync(cancellationToken);
-            if (isNewVersionAvailable)
-            {
-                var latestVersion = await _gitHubService.CheckForNewReleaseAsync(cancellationToken);
-                _logger.LogInformation("New version available: {LatestVersion}", latestVersion);
-            }
-            else
+            if (!await _gitHubService.IsNewVersionAvailableAsync(cancellationToken))
             {
                 _logger.LogInformation("Application is up to date");
             }
@@ -301,61 +282,5 @@ public class BanSyncService : BackgroundService
         {
             _logger.LogError(ex, "Error checking for new release");
         }
-    }
-
-    private void SyncDatabaseToFileCallback(object? state)
-    {
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await SyncDatabaseToFileAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in sync timer callback");
-            }
-        });
-    }
-
-    private void CheckForNewReleaseCallback(object? state)
-    {
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await CheckForNewReleaseAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in release check timer callback");
-            }
-        });
-    }
-
-    private void CleanupCacheCallback(object? state)
-    {
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                if (_steamService is SteamService steamService)
-                {
-                    steamService.CleanupExpiredCache();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in cache cleanup timer callback");
-            }
-        });
-    }
-
-    public override void Dispose()
-    {
-        _syncTimer?.Dispose();
-        _releaseCheckTimer?.Dispose();
-        _cacheCleanupTimer?.Dispose();
-        base.Dispose();
     }
 }

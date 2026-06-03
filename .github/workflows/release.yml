@@ -27,14 +27,23 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: 🏷️ Extraire la version du tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tag: $TAG / Version: $VERSION"
+
       - name: 📦 Restore les dépendances
         run: dotnet restore
 
       - name: 🏗 Build le projet
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore --configuration Release -p:Version=${{ steps.version.outputs.version }} -p:AssemblyVersion=${{ steps.version.outputs.version }} -p:FileVersion=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.tag }}
 
       - name: 🚀 Publish EXE (self-contained)
-        run: dotnet publish ./BBR-Ban-Sync.csproj -c Release -r win-x64 --self-contained true -o ./publish
+        run: dotnet publish ./BBR-Ban-Sync.csproj -c Release -r win-x64 --self-contained true -o ./publish -p:Version=${{ steps.version.outputs.version }} -p:AssemblyVersion=${{ steps.version.outputs.version }} -p:FileVersion=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.tag }}
 
       - name: 📦 Créer l'archive ZIP
         run: |

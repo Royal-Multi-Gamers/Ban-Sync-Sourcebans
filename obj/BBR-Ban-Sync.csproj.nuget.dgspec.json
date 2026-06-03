@@ -1,32 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "E:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj": {}
+    "E:\\GITHUB\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj": {}
   },
   "projects": {
-    "E:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj": {
-      "version": "1.0.0",
+    "E:\\GITHUB\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj": {
+      "version": "0.0.6",
       "restore": {
-        "projectUniqueName": "E:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
+        "projectUniqueName": "E:\\GITHUB\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
         "projectName": "BBR-Ban-Sync",
-        "projectPath": "E:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
+        "projectPath": "E:\\GITHUB\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\BBR-Ban-Sync.csproj",
         "packagesPath": "C:\\Users\\thiba\\.nuget\\packages\\",
-        "outputPath": "E:\\Github\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\obj\\",
+        "outputPath": "E:\\GITHUB\\Royal-Multi-Gamers\\Ban-Sync-Sourcebans\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\thiba\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\thiba\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -44,8 +37,7 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.300"
+        }
       },
       "frameworks": {
         "net8.0": {
@@ -75,6 +67,10 @@
               "target": "Package",
               "version": "[8.0.0, )"
             },
+            "Microsoft.Extensions.Options.DataAnnotations": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
             "MySqlConnector": {
               "target": "Package",
               "version": "[2.4.0, )"
@@ -86,14 +82,6 @@
             "NLog.Extensions.Hosting": {
               "target": "Package",
               "version": "[5.4.0, )"
-            },
-            "Newtonsoft.Json": {
-              "target": "Package",
-              "version": "[13.0.3, )"
-            },
-            "System.Text.Json": {
-              "target": "Package",
-              "version": "[8.0.5, )"
             }
           },
           "imports": [
@@ -112,7 +100,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.421/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

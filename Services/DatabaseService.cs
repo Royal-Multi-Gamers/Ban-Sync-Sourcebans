@@ -47,7 +47,7 @@ public class DatabaseService : IDatabaseService
         throw lastException!;
     }
 
-    public async Task<bool> IsSteamIdInDatabaseAsync(string steamId2, CancellationToken cancellationToken = default)
+    public async Task<bool> IsSteamIdInDatabaseAsync(string steamId2, int serverId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(steamId2))
             throw new ArgumentException("SteamID2 cannot be null or empty", nameof(steamId2));
@@ -57,18 +57,17 @@ public class DatabaseService : IDatabaseService
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            const string query = "SELECT COUNT(*) FROM sb_bans WHERE authid = @authid AND RemoveType IS NULL";
+            const string query = "SELECT 1 FROM sb_bans WHERE authid = @authid AND RemoveType IS NULL AND (sid = 0 OR sid = @sid) LIMIT 1";
             await using var command = new MySqlCommand(query, connection);
-            command.Parameters.AddWithValue("@authid", steamId2);
-
-            _logger.LogDebug("Executing query: {Query} with SteamID2: {SteamId2}", query, steamId2);
+            command.Parameters.Add("@authid", MySqlDbType.VarChar).Value = steamId2;
+            command.Parameters.Add("@sid", MySqlDbType.Int32).Value = serverId;
 
             var result = await command.ExecuteScalarAsync(cancellationToken);
-            var count = Convert.ToInt64(result ?? 0L);
+            var exists = result != null && result != DBNull.Value;
 
-            _logger.LogDebug("Found {Count} active bans for SteamID2: {SteamId2}", count, steamId2);
+            _logger.LogDebug("SteamID2 {SteamId2} active ban on server {ServerId}: {Exists}", steamId2, serverId, exists);
 
-            return count > 0;
+            return exists;
         }, $"IsSteamIdInDatabase({steamId2})");
     }
 
@@ -90,14 +89,14 @@ public class DatabaseService : IDatabaseService
                 VALUES (@authid, @name, @created, @ends, @length, @sid, @ip, @reason)";
 
             await using var command = new MySqlCommand(query, connection);
-            command.Parameters.AddWithValue("@authid", banRecord.AuthId);
-            command.Parameters.AddWithValue("@name", banRecord.Name);
-            command.Parameters.AddWithValue("@created", banRecord.Created);
-            command.Parameters.AddWithValue("@ends", banRecord.Ends);
-            command.Parameters.AddWithValue("@length", banRecord.Length);
-            command.Parameters.AddWithValue("@sid", banRecord.ServerId);
-            command.Parameters.AddWithValue("@ip", banRecord.IpAddress);
-            command.Parameters.AddWithValue("@reason", banRecord.Reason);
+            command.Parameters.Add("@authid", MySqlDbType.VarChar).Value = banRecord.AuthId;
+            command.Parameters.Add("@name", MySqlDbType.VarChar).Value = banRecord.Name;
+            command.Parameters.Add("@created", MySqlDbType.Int64).Value = banRecord.Created;
+            command.Parameters.Add("@ends", MySqlDbType.Int64).Value = banRecord.Ends;
+            command.Parameters.Add("@length", MySqlDbType.Int32).Value = banRecord.Length;
+            command.Parameters.Add("@sid", MySqlDbType.Int32).Value = banRecord.ServerId;
+            command.Parameters.Add("@ip", MySqlDbType.VarChar).Value = banRecord.IpAddress ?? string.Empty;
+            command.Parameters.Add("@reason", MySqlDbType.VarChar).Value = banRecord.Reason;
 
             _logger.LogDebug("Executing ban insert query for SteamID2: {SteamId2}, Name: {Name}", 
                 banRecord.AuthId, banRecord.Name);
@@ -127,7 +126,7 @@ public class DatabaseService : IDatabaseService
 
             const string query = "SELECT DISTINCT authid FROM sb_bans WHERE RemoveType IS NULL AND (sid = 0 OR sid = @sid)";
             await using var command = new MySqlCommand(query, connection);
-            command.Parameters.AddWithValue("@sid", serverId);
+            command.Parameters.Add("@sid", MySqlDbType.Int32).Value = serverId;
 
             _logger.LogDebug("Executing query to get active bans for server ID: {ServerId}", serverId);
 

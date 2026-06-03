@@ -8,8 +8,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
     private readonly string _filePath;
     private readonly ILogger<FileWatcherService> _logger;
     private FileSystemWatcher? _watcher;
-    private List<string> _lastLines = new();
-    private bool _isProcessing = false;
+    private HashSet<string> _lastLines = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _processingLock = new(1, 1);
     private bool _disposed = false;
 
@@ -31,7 +30,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         }
 
         // Initialize with current file content
-        _lastLines = new List<string>(await ReadFileAsync(cancellationToken));
+        _lastLines = new HashSet<string>(await ReadFileAsync(cancellationToken), StringComparer.Ordinal);
         _logger.LogInformation("Initialized file watcher with {LineCount} lines from {FilePath}", _lastLines.Count, _filePath);
 
         // Setup file watcher
@@ -128,7 +127,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
             await File.WriteAllLinesAsync(_filePath, linesList, cancellationToken);
             
             // Update our internal state
-            _lastLines = new List<string>(linesList);
+            _lastLines = new HashSet<string>(linesList, StringComparer.Ordinal);
 
             _logger.LogInformation("Successfully wrote {LineCount} lines to file: {FilePath}", linesList.Count, _filePath);
         }
@@ -163,12 +162,26 @@ public class FileWatcherService : IFileWatcherService, IDisposable
 
     private async void OnFileChanged(object sender, FileSystemEventArgs e)
     {
-        await ProcessFileChangeAsync(e);
+        try
+        {
+            await ProcessFileChangeAsync(e);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled error in file watcher event handler");
+        }
     }
 
     private async void OnFileRenamed(object sender, RenamedEventArgs e)
     {
-        await ProcessFileChangeAsync(e);
+        try
+        {
+            await ProcessFileChangeAsync(e);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled error in file watcher rename handler");
+        }
     }
 
     private void OnWatcherError(object sender, ErrorEventArgs e)
@@ -178,31 +191,28 @@ public class FileWatcherService : IFileWatcherService, IDisposable
 
     private async Task ProcessFileChangeAsync(FileSystemEventArgs e)
     {
-        if (_isProcessing)
+        if (!await _processingLock.WaitAsync(0))
         {
             _logger.LogDebug("Ignoring file change event - already processing");
             return;
         }
 
-        await _processingLock.WaitAsync();
         try
         {
-            _isProcessing = true;
-
             _logger.LogDebug("File change detected: {ChangeType} - {FilePath}", e.ChangeType, e.FullPath);
 
             // Small delay to ensure file write is complete
             await Task.Delay(200);
 
-            var currentLines = (await ReadFileAsync()).ToList();
+            var currentLines = new HashSet<string>(await ReadFileAsync(), StringComparer.Ordinal);
 
-            _logger.LogDebug("Comparing {CurrentCount} current lines with {LastCount} previous lines", 
+            _logger.LogDebug("Comparing {CurrentCount} current lines with {LastCount} previous lines",
                 currentLines.Count, _lastLines.Count);
 
             var newLines = currentLines.Except(_lastLines).ToList();
             var removedLines = _lastLines.Except(currentLines).ToList();
 
-            if (newLines.Any())
+            if (newLines.Count > 0)
             {
                 _logger.LogInformation("Detected {Count} new lines in file", newLines.Count);
                 if (OnNewLinesDetected != null)
@@ -211,7 +221,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
                 }
             }
 
-            if (removedLines.Any())
+            if (removedLines.Count > 0)
             {
                 _logger.LogInformation("Detected {Count} removed lines in file", removedLines.Count);
                 if (OnLinesRemoved != null)
@@ -220,7 +230,7 @@ public class FileWatcherService : IFileWatcherService, IDisposable
                 }
             }
 
-            if (!newLines.Any() && !removedLines.Any())
+            if (newLines.Count == 0 && removedLines.Count == 0)
             {
                 _logger.LogDebug("No changes detected in file content");
             }
@@ -233,7 +243,6 @@ public class FileWatcherService : IFileWatcherService, IDisposable
         }
         finally
         {
-            _isProcessing = false;
             _processingLock.Release();
         }
     }

@@ -81,11 +81,12 @@ L'application utilise maintenant `appsettings.json` pour la configuration :
   },
   "GitHub": {
     "Owner": "Royal-Multi-Gamers",
-    "Repository": "Ban-Sync-Sourcebans",
-    "CurrentVersion": "v0.0.5"
+    "Repository": "Ban-Sync-Sourcebans"
   }
 }
 ```
+
+> La version courante est lue automatiquement depuis l'assembly (`AssemblyInformationalVersion`, injectée par le workflow de release depuis le tag Git). Vous pouvez optionnellement ajouter `"CurrentVersion": "vX.Y.Z"` dans la section `GitHub` pour forcer une valeur.
 
 ### Variables d'Environnement
 

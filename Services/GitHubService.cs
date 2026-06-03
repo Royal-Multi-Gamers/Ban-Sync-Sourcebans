@@ -1,6 +1,8 @@
 using BBR_Ban_Sync.Interfaces;
 using BBR_Ban_Sync.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -8,34 +10,80 @@ namespace BBR_Ban_Sync.Services;
 
 public class GitHubService : IGitHubService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static readonly string CurrentAssemblyVersion = ResolveAssemblyVersion();
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<GitHubService> _logger;
+    private readonly GitHubConfiguration _config;
 
-    private readonly string _owner = "Royal-Multi-Gamers";
-    private readonly string _repository = "Ban-Sync-Sourcebans";
-    private readonly string _currentVersion = "v0.0.6";
-
-    public GitHubService(HttpClient httpClient, ILogger<GitHubService> logger)
+    public GitHubService(HttpClient httpClient, ILogger<GitHubService> logger, IOptions<GitHubConfiguration> config)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
 
-        // Set User-Agent header required by GitHub API
-        if (!_httpClient.DefaultRequestHeaders.Contains("User-Agent"))
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "BBR-Ban-Sync");
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"BBR-Ban-Sync/{CurrentVersion}");
         }
     }
 
+    private string CurrentVersion =>
+        string.IsNullOrWhiteSpace(_config.CurrentVersion) ? CurrentAssemblyVersion : _config.CurrentVersion;
+
     public async Task<string?> CheckForNewReleaseAsync(CancellationToken cancellationToken = default)
+    {
+        var release = await FetchLatestReleaseAsync(cancellationToken);
+        return release?.TagName;
+    }
+
+    public async Task<bool> IsNewVersionAvailableAsync(CancellationToken cancellationToken = default)
+    {
+        var release = await FetchLatestReleaseAsync(cancellationToken);
+        if (release is null || string.IsNullOrWhiteSpace(release.TagName))
+            return false;
+
+        var current = NormalizeVersion(CurrentVersion);
+        var latest = NormalizeVersion(release.TagName);
+
+        bool isNewer;
+        if (Version.TryParse(current, out var currentVer) && Version.TryParse(latest, out var latestVer))
+        {
+            isNewer = latestVer > currentVer;
+        }
+        else
+        {
+            isNewer = !string.Equals(release.TagName, CurrentVersion, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (isNewer)
+        {
+            _logger.LogInformation("New version available: {LatestVersion} (current: {CurrentVersion}) - {Url}",
+                release.TagName, CurrentVersion, release.HtmlUrl);
+        }
+        else
+        {
+            _logger.LogDebug("Up to date. Current: {CurrentVersion}, latest: {LatestVersion}",
+                CurrentVersion, release.TagName);
+        }
+
+        return isNewer;
+    }
+
+    private async Task<GitHubRelease?> FetchLatestReleaseAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var url = $"https://api.github.com/repos/{_owner}/{_repository}/releases/latest";
-            
+            var url = $"https://api.github.com/repos/{_config.Owner}/{_config.Repository}/releases/latest";
+
             _logger.LogDebug("Checking for new release at: {Url}", url);
 
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -43,24 +91,16 @@ public class GitHubService : IGitHubService
                 return null;
             }
 
-            var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            var releaseInfo = JsonSerializer.Deserialize<GitHubRelease>(jsonContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var release = await JsonSerializer.DeserializeAsync<GitHubRelease>(stream, JsonOptions, cancellationToken);
 
-            var latestVersion = releaseInfo?.TagName;
-
-            if (string.IsNullOrWhiteSpace(latestVersion))
+            if (release is null || string.IsNullOrWhiteSpace(release.TagName))
             {
-                _logger.LogWarning("Could not parse latest version from GitHub API response");
+                _logger.LogWarning("Could not parse latest release from GitHub API response");
                 return null;
             }
 
-            _logger.LogDebug("Latest version from GitHub: {LatestVersion}, Current version: {CurrentVersion}", 
-                latestVersion, _currentVersion);
-
-            return latestVersion;
+            return release;
         }
         catch (Exception ex)
         {
@@ -69,33 +109,30 @@ public class GitHubService : IGitHubService
         }
     }
 
-    public async Task<bool> IsNewVersionAvailableAsync(CancellationToken cancellationToken = default)
+    private static string NormalizeVersion(string version)
     {
-        var latestVersion = await CheckForNewReleaseAsync(cancellationToken);
+        var trimmed = version.Trim();
+        if (trimmed.StartsWith('v') || trimmed.StartsWith('V'))
+            trimmed = trimmed[1..];
+        return trimmed;
+    }
 
-        if (string.IsNullOrWhiteSpace(latestVersion))
+    private static string ResolveAssemblyVersion()
+    {
+        var asm = Assembly.GetExecutingAssembly();
+        var info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(info))
         {
-            return false;
+            // strip "+commitsha" suffix added by SourceLink
+            var plus = info.IndexOf('+');
+            if (plus >= 0) info = info[..plus];
+            return info!;
         }
 
-        var isNewVersion = !string.Equals(latestVersion, _currentVersion, StringComparison.OrdinalIgnoreCase);
-
-        if (isNewVersion)
-        {
-            _logger.LogInformation("New version available: {LatestVersion} (current: {CurrentVersion})", 
-                latestVersion, _currentVersion);
-        }
-        else
-        {
-            _logger.LogDebug("No new version available. Current version {CurrentVersion} is up to date", 
-                _currentVersion);
-        }
-
-        return isNewVersion;
+        return asm.GetName().Version?.ToString() ?? "0.0.0";
     }
 }
 
-// GitHub API response models
 internal class GitHubRelease
 {
     [JsonPropertyName("tag_name")]
@@ -106,5 +143,7 @@ internal class GitHubRelease
     public DateTime CreatedAt { get; set; }
     public DateTime PublishedAt { get; set; }
     public string? Body { get; set; }
+
+    [JsonPropertyName("html_url")]
     public string? HtmlUrl { get; set; }
 }
